@@ -1,0 +1,14 @@
+// swift-tools-version:6.0
+import PackageDescription
+
+let package = Package(
+    name: "Stixx",
+    platforms: [.macOS(.v13)],
+    targets: [
+        .executableTarget(
+            name: "Stixx",
+            path: "Sources/Stixx",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        )
+    ]
+)
