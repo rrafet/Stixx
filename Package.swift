@@ -9,6 +9,12 @@ let package = Package(
             name: "Stixx",
             path: "Sources/Stixx",
             swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .testTarget(
+            name: "StixxTests",
+            dependencies: ["Stixx"],
+            path: "Tests/StixxTests",
+            swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]
 )

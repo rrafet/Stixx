@@ -92,6 +92,23 @@ final class NoteManager {
         Array(notes.values)
     }
 
+    /// All notes as one human-readable text document, for File > Export.
+    func exportText() -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .short
+        let sorted = notes.values
+            .map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        var lines = ["Stixx Notes — exported \(formatter.string(from: Date()))"]
+        for text in sorted {
+            lines.append("\n\u{2014}\u{2014}\u{2014}\n")
+            lines.append(text)
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
     // MARK: Edge snapping
 
     /// When a drag of a note window ends, nudge it into alignment with

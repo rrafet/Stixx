@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
@@ -69,11 +70,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         noteManager.restoreLastDeletedNote()
     }
 
-    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-        if menuItem.action == #selector(restoreLastDeletedNote(_:)) {
-            return noteManager.hasRecentlyDeleted
+    @objc func exportNotes(_ sender: Any?) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.nameFieldStringValue = "Stixx Notes.txt"
+        panel.canCreateDirectories = true
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try noteManager.exportText().write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            NSAlert(error: error).runModal()
         }
-        return true
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        switch menuItem.action {
+        case #selector(restoreLastDeletedNote(_:)):
+            return noteManager.hasRecentlyDeleted
+        case #selector(exportNotes(_:)):
+            return noteManager.hasNotes
+        default:
+            return true
+        }
     }
 
     /// Menu bar presence, so Stixx is reachable even with no note in sight —
@@ -140,6 +159,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         let reopenItem = NSMenuItem(title: "Reopen Last Deleted Note", action: #selector(restoreLastDeletedNote(_:)), keyEquivalent: "T")
         reopenItem.target = self
         fileMenu.addItem(reopenItem)
+        fileMenu.addItem(.separator())
+        let exportItem = NSMenuItem(title: "Export Notes…", action: #selector(exportNotes(_:)), keyEquivalent: "E")
+        exportItem.target = self
+        fileMenu.addItem(exportItem)
         fileMenuItem.submenu = fileMenu
         mainMenu.addItem(fileMenuItem)
 
