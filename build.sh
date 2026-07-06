@@ -7,14 +7,22 @@ cd "$(dirname "$0")"
 APP_NAME="Stixx"
 APP_DIR="$APP_NAME.app"
 
-echo "Building $APP_NAME (release)..."
-swift build -c release
+# Build each architecture separately and merge with lipo: passing both
+# --arch flags to a single swift build requires full Xcode, while this
+# form works with Command Line Tools alone.
+echo "Building $APP_NAME (release, arm64)..."
+swift build -c release --arch arm64
+echo "Building $APP_NAME (release, x86_64)..."
+swift build -c release --arch x86_64
 
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
-cp ".build/release/$APP_NAME" "$APP_DIR/Contents/MacOS/$APP_NAME"
+lipo -create \
+    ".build/arm64-apple-macosx/release/$APP_NAME" \
+    ".build/x86_64-apple-macosx/release/$APP_NAME" \
+    -output "$APP_DIR/Contents/MacOS/$APP_NAME"
 cp "Packaging/Info.plist" "$APP_DIR/Contents/Info.plist"
 cp "Packaging/PrivacyInfo.xcprivacy" "$APP_DIR/Contents/Resources/PrivacyInfo.xcprivacy"
 printf 'APPL????' > "$APP_DIR/Contents/PkgInfo"
