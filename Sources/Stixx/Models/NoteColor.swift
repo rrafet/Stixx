@@ -21,23 +21,26 @@ enum NoteColor: String, CaseIterable, Codable {
         NSColor(name: rawValue + "Background") { appearance in
             let dark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
             switch self {
+            // Dark tones sit in the mid range on purpose: deep enough to
+            // belong to dark mode, light enough that the note still reads
+            // as colored paper rather than a shadow.
             case .yellow:
-                return dark ? NSColor(calibratedRed: 0.46, green: 0.38, blue: 0.10, alpha: 1)
+                return dark ? NSColor(calibratedRed: 0.58, green: 0.50, blue: 0.24, alpha: 1)
                             : NSColor(calibratedRed: 1.00, green: 0.93, blue: 0.68, alpha: 1)
             case .blue:
-                return dark ? NSColor(calibratedRed: 0.13, green: 0.27, blue: 0.46, alpha: 1)
+                return dark ? NSColor(calibratedRed: 0.28, green: 0.42, blue: 0.60, alpha: 1)
                             : NSColor(calibratedRed: 0.78, green: 0.89, blue: 1.00, alpha: 1)
             case .green:
-                return dark ? NSColor(calibratedRed: 0.14, green: 0.36, blue: 0.22, alpha: 1)
+                return dark ? NSColor(calibratedRed: 0.28, green: 0.48, blue: 0.36, alpha: 1)
                             : NSColor(calibratedRed: 0.78, green: 0.94, blue: 0.80, alpha: 1)
             case .pink:
-                return dark ? NSColor(calibratedRed: 0.46, green: 0.18, blue: 0.30, alpha: 1)
+                return dark ? NSColor(calibratedRed: 0.60, green: 0.34, blue: 0.44, alpha: 1)
                             : NSColor(calibratedRed: 1.00, green: 0.82, blue: 0.88, alpha: 1)
             case .purple:
-                return dark ? NSColor(calibratedRed: 0.32, green: 0.20, blue: 0.46, alpha: 1)
+                return dark ? NSColor(calibratedRed: 0.46, green: 0.36, blue: 0.60, alpha: 1)
                             : NSColor(calibratedRed: 0.89, green: 0.82, blue: 1.00, alpha: 1)
             case .gray:
-                return dark ? NSColor(calibratedRed: 0.26, green: 0.26, blue: 0.27, alpha: 1)
+                return dark ? NSColor(calibratedRed: 0.38, green: 0.38, blue: 0.40, alpha: 1)
                             : NSColor(calibratedRed: 0.90, green: 0.90, blue: 0.91, alpha: 1)
             }
         }

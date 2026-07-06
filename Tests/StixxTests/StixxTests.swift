@@ -12,6 +12,8 @@ struct NoteModelTests {
             fontSize: 18,
             isPinned: true,
             isTranslucent: true,
+            isStashed: true,
+            expandedHeight: 320,
             x: 10, y: 20, width: 300, height: 200
         )
         let data = try JSONEncoder().encode([note])
@@ -31,6 +33,15 @@ struct NoteModelTests {
         #expect(notes[0].fontSize == 16)
         #expect(!notes[0].isPinned)
         #expect(!notes[0].isTranslucent)
+        #expect(!notes[0].isStashed)
+        #expect(notes[0].expandedHeight == nil)
+    }
+
+    @Test func displayTitleUsesFirstNonEmptyLineAndFallsBack() {
+        var note = Note(color: .yellow, x: 0, y: 0)
+        #expect(note.displayTitle == "Stix")
+        note.text = "  Groceries  \nmilk\neggs"
+        #expect(note.displayTitle == "Groceries")
     }
 
     @Test func frameAccessorRoundTrips() {

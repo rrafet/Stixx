@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Stixx.app
+        run: ./build.sh
+      - name: Zip app bundle
+        run: ditto -c -k --sequesterRsrc --keepParent Stixx.app Stixx.zip
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" Stixx.zip \
+            --title "Stixx $GITHUB_REF_NAME" \
+            --generate-notes \
+          || gh release upload "$GITHUB_REF_NAME" Stixx.zip --clobber

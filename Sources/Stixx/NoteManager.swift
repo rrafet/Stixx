@@ -14,9 +14,26 @@ final class NoteManager {
     private var recentlyDeleted: [Note] = []
 
     var hasNotes: Bool { !notes.isEmpty }
+    /// True when at least one stix has a window on screen (stashed ones don't).
+    var hasOpenNotes: Bool { !controllers.isEmpty }
     var hasRecentlyDeleted: Bool { !recentlyDeleted.isEmpty }
 
     private var mouseUpMonitor: Any?
+
+    /// The hints stix: seeded on a first-ever launch and reachable any time
+    /// from Help > Show Welcome Stix. Uses the real list markers, so the
+    /// checkbox is clickable and the bullets show the actual list styling.
+    static let welcomeText = """
+        Welcome to Stixx
+        \u{2022} \u{2318}N makes a new stix \u{00B7} \u{2325}\u{2318}N works from any app
+        \u{2022} Type "- " for a list, "[]" for a checklist
+        \u{2610} Click a box to check it off
+        \u{2022} Tab / \u{21E7}Tab indent list items
+        \u{2022} Right-click a stix for colors and options
+        \u{2022} The tray button saves a stix for later (\u{2318}S)
+        \u{2022} The chevron collapses it to just its title
+        \u{2022} \u{2318}F finds anything, saved stixx included
+        """
 
     /// Loads persisted notes and opens a window for each. On a first-ever
     /// launch (no saved file), seeds one welcome note, matching Stickies.
@@ -26,15 +43,19 @@ final class NoteManager {
         if loaded.isEmpty {
             let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             loaded = [Note(
-                text: "Welcome to Stixx.\n\nRight-click a note for colors and options.\n\u{2318}N new note \u{00B7} \u{2325}\u{2318}N from anywhere \u{00B7} \u{2318}F find\nType \"- \" for a list, \"[]\" for a checklist.",
+                text: Self.welcomeText,
                 color: .yellow,
                 x: screen.minX + 60,
-                y: screen.maxY - 280
+                y: screen.maxY - 400,
+                width: 300,
+                height: 320
             )]
         }
         for note in loaded {
             notes[note.id] = note
-            showWindow(for: fitted(note))
+            if !note.isStashed {
+                showWindow(for: fitted(note))
+            }
         }
         if let last = loaded.last {
             lastColor = last.color
@@ -48,6 +69,17 @@ final class NoteManager {
         let note = Note(color: color, isPinned: AppPreferences.shared.alwaysFloating, x: origin.x, y: origin.y)
         notes[note.id] = note
         lastColor = color
+        lastOrigin = origin
+        showWindow(for: note, animated: true)
+        persist()
+    }
+
+    /// Opens a fresh copy of the welcome/tips stix, for Help > Show Welcome
+    /// Stix — the seeded one is long gone by the time anyone looks for it.
+    func createWelcomeStix() {
+        let origin = nextOrigin()
+        let note = Note(text: Self.welcomeText, color: .yellow, x: origin.x, y: origin.y, width: 300, height: 320)
+        notes[note.id] = note
         lastOrigin = origin
         showWindow(for: note, animated: true)
         persist()
@@ -71,6 +103,34 @@ final class NoteManager {
         let restored = fitted(note)
         notes[restored.id] = restored
         showWindow(for: restored, animated: true)
+        persist()
+    }
+
+    // MARK: Stashing (save & put away)
+
+    /// Saved-for-later stixx, for the Saved Stixx menus.
+    func stashedNotes() -> [Note] {
+        notes.values
+            .filter(\.isStashed)
+            .sorted { $0.displayTitle.localizedCaseInsensitiveCompare($1.displayTitle) == .orderedAscending }
+    }
+
+    /// Saves a stix and closes its window without deleting it; it stays on
+    /// disk and can be reopened from the Saved Stixx menu or the Find panel.
+    func stashNote(id: UUID) {
+        guard var note = notes[id] else { return }
+        note.isStashed = true
+        notes[id] = note
+        controllers.removeValue(forKey: id)?.closeForStash()
+        persist()
+    }
+
+    /// Reopens a stashed stix, window and all, where it was left.
+    func reopenStashedNote(id: UUID) {
+        guard var note = notes[id], note.isStashed else { return }
+        note.isStashed = false
+        notes[id] = note
+        showWindow(for: fitted(note), animated: true)
         persist()
     }
 
@@ -168,9 +228,14 @@ final class NoteManager {
         return snapped
     }
 
-    /// Brings one note's window to the front, used by the Find Notes panel.
+    /// Brings one note's window to the front, used by the Find panel.
+    /// A stashed stix has no window, so it is reopened instead.
     func focusNote(id: UUID) {
-        controllers[id]?.window?.makeKeyAndOrderFront(nil)
+        if let controller = controllers[id] {
+            controller.window?.makeKeyAndOrderFront(nil)
+        } else {
+            reopenStashedNote(id: id)
+        }
     }
 
     private func showWindow(for note: Note, animated: Bool = false) {

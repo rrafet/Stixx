@@ -24,9 +24,23 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
     private let tintView: NSBox
     private let paperView: PaperGradientView
     private let pinButton: NSButton
+    private let stashButton: NSButton
+    private let collapseButton: NSButton
+    /// Faint "2/5" checklist progress, visible while the controls are not.
+    private let progressLabel: NSTextField
+    /// Shown instead of the text view while collapsed: just the title,
+    /// vertically centered in the strip — the Stickies look.
+    private let collapsedTitleLabel: NSTextField
+    /// Set while the window is closing because the stix was stashed, so
+    /// windowWillClose doesn't treat the close as a deletion.
+    private var isClosingForStash = false
     private var isMouseInside = false
     /// While collapsed, holds the height to restore on expand; nil otherwise.
-    private var expandedHeight: CGFloat?
+    /// Backed by the note so a collapsed stix stays collapsed across launches.
+    private var expandedHeight: CGFloat? {
+        get { note.expandedHeight.map { CGFloat($0) } }
+        set { note.expandedHeight = newValue.map(Double.init) }
+    }
     private var lastMoveAt: Date?
     private static let collapsedHeight: CGFloat = 44
 
@@ -47,19 +61,27 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         let scrollView = NSScrollView()
         let textView = StickyTextView()
         let pinButton = NSButton()
+        let stashButton = NSButton()
+        let collapseButton = NSButton()
+        let progressLabel = NSTextField(labelWithString: "")
+        self.progressLabel = progressLabel
+        let collapsedTitleLabel = NSTextField(labelWithString: "")
+        self.collapsedTitleLabel = collapsedTitleLabel
         self.effectView = effectView
         self.tintView = tintView
         self.paperView = paperView
         self.scrollView = scrollView
         self.textView = textView
         self.pinButton = pinButton
+        self.stashButton = stashButton
+        self.collapseButton = collapseButton
 
         let window = StickyNoteWindow(contentRect: note.frame, color: note.color.background)
 
         super.init(window: window)
 
         window.delegate = self
-        window.title = Self.windowTitle(for: note.text)
+        window.title = note.displayTitle
 
         containerView.wantsLayer = true
 
@@ -119,22 +141,70 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
                 view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
             ])
         }
+        // Collapsed-state title: replaces the whole text view while the stix
+        // is a strip, so no stray second line or caret can ever peek through.
+        collapsedTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        collapsedTitleLabel.lineBreakMode = .byTruncatingTail
+        collapsedTitleLabel.maximumNumberOfLines = 1
+        collapsedTitleLabel.isHidden = true
+        containerView.addSubview(collapsedTitleLabel)
+        NSLayoutConstraint.activate([
+            collapsedTitleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 14),
+            collapsedTitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: containerView.trailingAnchor, constant: -86),
+            collapsedTitleLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor)
+        ])
         window.contentView = containerView
 
-        // A pin button in the empty top-right corner of the (hidden) title
-        // bar, using the same native API window tab bars / toolbars use to
-        // add accessories there — no manual overlay layout needed.
-        pinButton.frame = NSRect(x: 0, y: 0, width: 26, height: 24)
+        // Collapse + stash + pin buttons in the empty top-right corner of the
+        // (hidden) title bar, using the same native API window tab bars /
+        // toolbars use to add accessories there — no manual overlay layout
+        // needed. All three live in one accessory view, side by side, with
+        // the checklist progress label sitting where they fade in — the two
+        // trade places on hover.
+        progressLabel.frame = NSRect(x: 0, y: 4, width: 50, height: 16)
+        progressLabel.alignment = .right
+        progressLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .medium)
+        progressLabel.isHidden = true
+        collapseButton.frame = NSRect(x: 0, y: 0, width: 26, height: 24)
+        collapseButton.isBordered = false
+        collapseButton.imagePosition = .imageOnly
+        collapseButton.setButtonType(.momentaryChange)
+        collapseButton.target = self
+        collapseButton.action = #selector(toggleCollapse(_:))
+        collapseButton.toolTip = "Collapse this stix to its title"
+        stashButton.frame = NSRect(x: 26, y: 0, width: 26, height: 24)
+        stashButton.isBordered = false
+        stashButton.imagePosition = .imageOnly
+        stashButton.setButtonType(.momentaryChange)
+        stashButton.target = self
+        stashButton.action = #selector(stashStix(_:))
+        stashButton.toolTip = "Save this stix and put it away"
+        pinButton.frame = NSRect(x: 52, y: 0, width: 26, height: 24)
         pinButton.isBordered = false
         pinButton.imagePosition = .imageOnly
         pinButton.setButtonType(.momentaryChange)
         pinButton.target = self
         pinButton.action = #selector(togglePin(_:))
-        pinButton.toolTip = "Keep this note on top"
-        let pinAccessory = NSTitlebarAccessoryViewController()
-        pinAccessory.view = pinButton
-        pinAccessory.layoutAttribute = .right
-        window.addTitlebarAccessoryViewController(pinAccessory)
+        pinButton.toolTip = "Keep this stix on top"
+        let accessoryView = NSView(frame: NSRect(x: 0, y: 0, width: 78, height: 24))
+        accessoryView.addSubview(progressLabel)
+        accessoryView.addSubview(collapseButton)
+        accessoryView.addSubview(stashButton)
+        accessoryView.addSubview(pinButton)
+        let cornerAccessory = NSTitlebarAccessoryViewController()
+        cornerAccessory.view = accessoryView
+        cornerAccessory.layoutAttribute = .right
+        window.addTitlebarAccessoryViewController(cornerAccessory)
+
+        // A stix saved while collapsed comes back collapsed: its frame is
+        // already strip-sized, but the window's limits must match.
+        if note.expandedHeight != nil {
+            var frame = note.frame
+            frame.origin.y = frame.maxY - Self.collapsedHeight
+            frame.size.height = Self.collapsedHeight
+            window.setFrame(frame, display: false)
+        }
+        applyCollapseConstraints()
 
         // Controls stay invisible until the mouse is over the note; only the
         // close button survives of the traffic lights.
@@ -142,6 +212,8 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         window.standardWindowButton(.zoomButton)?.isHidden = true
         window.standardWindowButton(.closeButton)?.alphaValue = 0
         pinButton.alphaValue = note.isPinned ? Self.restingPinAlpha : 0
+        stashButton.alphaValue = 0
+        collapseButton.alphaValue = 0
         containerView.onHoverChanged = { [weak self] inside in
             guard let self else { return }
             self.isMouseInside = inside
@@ -155,12 +227,6 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-
-    private static func windowTitle(for text: String) -> String {
-        let firstLine = text.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: true).first
-        let trimmed = firstLine.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""
-        return trimmed.isEmpty ? "Note" : String(trimmed.prefix(40))
     }
 
     private func applyWindowLevel() {
@@ -197,24 +263,61 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         paragraphStyle.lineSpacing = 3
         textView.defaultParagraphStyle = paragraphStyle
         textView.typingAttributes[.paragraphStyle] = paragraphStyle
-        let fullRange = NSRange(location: 0, length: (textView.string as NSString).length)
-        if fullRange.length > 0 {
-            textView.textStorage?.addAttribute(.paragraphStyle, value: paragraphStyle, range: fullRange)
-        }
         applyTextStyling()
+
+        // Collapsed: the strip shows a single centered title and nothing
+        // else; the text view (and any caret or second line) is hidden.
+        let collapsed = expandedHeight != nil
+        scrollView.isHidden = collapsed
+        collapsedTitleLabel.isHidden = !collapsed
+        collapsedTitleLabel.stringValue = note.displayTitle
+        collapsedTitleLabel.font = note.fontStyle.font(size: min(CGFloat(note.fontSize), 15), weight: .semibold)
+        collapsedTitleLabel.textColor = ink
 
         let symbolName = note.isPinned ? "pin.fill" : "pin"
         let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
-        pinButton.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Keep this note on top")?
+        pinButton.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Keep this stix on top")?
             .withSymbolConfiguration(config)
         pinButton.contentTintColor = ink.withAlphaComponent(note.isPinned ? 0.95 : 0.5)
+        stashButton.image = NSImage(systemSymbolName: "tray.and.arrow.down", accessibilityDescription: "Save this stix and put it away")?
+            .withSymbolConfiguration(config)
+        stashButton.contentTintColor = ink.withAlphaComponent(0.5)
+        collapseButton.image = NSImage(
+            systemSymbolName: collapsed ? "chevron.down" : "chevron.up",
+            accessibilityDescription: collapsed ? "Expand this stix" : "Collapse this stix to its title"
+        )?.withSymbolConfiguration(config)
+        collapseButton.toolTip = collapsed ? "Expand this stix" : "Collapse this stix to its title"
+        collapseButton.contentTintColor = ink.withAlphaComponent(collapsed ? 0.95 : 0.5)
+        progressLabel.textColor = ink.withAlphaComponent(0.5)
+        updateChecklistProgress()
         updateControlVisibility(animated: false)
     }
 
+    /// Refreshes the faint "2/5" checklist tally shown while the controls
+    /// are faded out — on a collapsed stix it is the whole status display.
+    private func updateChecklistProgress() {
+        var total = 0
+        var done = 0
+        (note.text as NSString).enumerateSubstrings(
+            in: NSRange(location: 0, length: (note.text as NSString).length),
+            options: [.byLines]
+        ) { line, _, _, _ in
+            guard let line else { return }
+            let content = line.drop(while: { $0 == "\t" })
+            if content.hasPrefix("\u{2610}") { total += 1 }
+            if content.hasPrefix("\u{2611}") { total += 1; done += 1 }
+        }
+        progressLabel.stringValue = "\(done)/\(total)"
+        progressLabel.isHidden = total == 0
+    }
+
     /// The note's first line is its title: rendered semibold, like Notes,
-    /// so a wall of stickies can be scanned at a glance. Checked-off
-    /// checklist lines read as done: dimmed and struck through past the
-    /// box. Reapplied after every edit since any keystroke can change both.
+    /// so a wall of stickies can be scanned at a glance. List lines get a
+    /// hanging indent and a softened marker so wrapped text aligns and the
+    /// glyphs recede behind the words; leading tabs (Tab / ⇧Tab) nest items
+    /// visually. Checked-off checklist lines read as done: dimmed and struck
+    /// through past the box. Reapplied after every edit since any keystroke
+    /// can change all of it.
     private func applyTextStyling() {
         guard let storage = textView.textStorage else { return }
         let text = textView.string as NSString
@@ -222,6 +325,8 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         let ink = note.color.textColor
         let bodyFont = note.fontStyle.font(size: CGFloat(note.fontSize))
         let titleFont = note.fontStyle.font(size: CGFloat(note.fontSize), weight: .semibold)
+        let baseParagraph = NSMutableParagraphStyle()
+        baseParagraph.lineSpacing = 3
         let full = NSRange(location: 0, length: text.length)
         let newlineIndex = text.range(of: "\n").location
         let titleLength = newlineIndex == NSNotFound ? text.length : newlineIndex
@@ -231,41 +336,100 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
             storage.addAttribute(.font, value: titleFont, range: NSRange(location: 0, length: titleLength))
         }
         storage.addAttribute(.foregroundColor, value: ink, range: full)
+        storage.addAttribute(.paragraphStyle, value: baseParagraph, range: full)
         storage.removeAttribute(.strikethroughStyle, range: full)
         text.enumerateSubstrings(in: full, options: [.byLines, .substringNotRequired]) { _, lineRange, _, _ in
-            guard lineRange.length >= 1, text.character(at: lineRange.location) == 0x2611 else { return } // "☑"
-            storage.addAttribute(.foregroundColor, value: ink.withAlphaComponent(0.45), range: lineRange)
-            if lineRange.length > 2 {
-                let checkedText = NSRange(location: lineRange.location + 2, length: lineRange.length - 2)
-                storage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: checkedText)
-            }
+            self.styleLine(lineRange, text: text, storage: storage, ink: ink, bodyFont: bodyFont)
         }
         storage.endEditing()
     }
 
-    /// Fades the close button and pin in when the mouse is over the note and
-    /// out when it leaves. A pinned note keeps its pin faintly visible so the
-    /// pinned state never becomes invisible.
+    private func styleLine(_ lineRange: NSRange, text: NSString, storage: NSTextStorage, ink: NSColor, bodyFont: NSFont) {
+        guard lineRange.length >= 1 else { return }
+        // Leading tabs carry the nesting level; the marker sits after them.
+        var markerStart = lineRange.location
+        while markerStart < NSMaxRange(lineRange), text.character(at: markerStart) == 0x09 { markerStart += 1 }
+        guard markerStart < NSMaxRange(lineRange) else { return }
+        let tabCount = markerStart - lineRange.location
+        let first = Int(text.character(at: markerStart))
+
+        let isBullet = first == 0x2022    // "•"
+        let isUnchecked = first == 0x2610 // "☐"
+        let isChecked = first == 0x2611   // "☑"
+        guard isBullet || isUnchecked || isChecked else { return }
+
+        let markerLength = min(2, NSMaxRange(lineRange) - markerStart)
+        let marker = text.substring(with: NSRange(location: markerStart, length: markerLength))
+        let markerWidth = (marker as NSString).size(withAttributes: [.font: bodyFont]).width
+        let listParagraph = NSMutableParagraphStyle()
+        listParagraph.lineSpacing = 3
+        listParagraph.paragraphSpacingBefore = 2
+        // Each tab advances by one marker width, and wrapped text hangs at
+        // the item's text edge — nested items step in evenly.
+        listParagraph.tabStops = []
+        listParagraph.defaultTabInterval = markerWidth
+        listParagraph.headIndent = CGFloat(tabCount + 1) * markerWidth
+        storage.addAttribute(.paragraphStyle, value: listParagraph, range: lineRange)
+
+        if isChecked {
+            storage.addAttribute(.foregroundColor, value: ink.withAlphaComponent(0.45), range: lineRange)
+            if NSMaxRange(lineRange) - markerStart > 2 {
+                let checkedText = NSRange(location: markerStart + 2, length: NSMaxRange(lineRange) - markerStart - 2)
+                storage.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: checkedText)
+            }
+        }
+
+        let markerRange = NSRange(location: markerStart, length: 1)
+        if isBullet {
+            storage.addAttribute(.foregroundColor, value: ink.withAlphaComponent(0.55), range: markerRange)
+        } else {
+            // Checkboxes drawn a point larger than the text: an easier click
+            // target that also reads more like a control than a character.
+            let boxFont = note.fontStyle.font(size: CGFloat(note.fontSize) + 1)
+            storage.addAttribute(.font, value: boxFont, range: markerRange)
+            storage.addAttribute(.foregroundColor, value: ink.withAlphaComponent(isChecked ? 0.5 : 0.6), range: markerRange)
+        }
+    }
+
+    /// Fades the close, collapse, stash, and pin buttons in when the mouse
+    /// is over the note and out when it leaves. A pinned note keeps its pin
+    /// faintly visible so the pinned state never becomes invisible, and a
+    /// collapsed one keeps its chevron for the same reason.
     private func updateControlVisibility(animated: Bool) {
         let closeButton = window?.standardWindowButton(.closeButton)
+        let collapsed = expandedHeight != nil
         let controlAlpha: CGFloat = isMouseInside ? 1 : 0
+        // No close button on a collapsed strip: it would sit on the title,
+        // and a collapsed stix shouldn't be one stray click from deletion.
+        // ⌘W (with its confirmation) still works.
+        let closeAlpha: CGFloat = collapsed ? 0 : controlAlpha
         let pinAlpha: CGFloat = isMouseInside ? 1 : (note.isPinned ? Self.restingPinAlpha : 0)
+        let collapseAlpha: CGFloat = isMouseInside ? 1 : (collapsed ? Self.restingPinAlpha : 0)
+        // The tally rests where the buttons appear, so they trade places.
+        let progressAlpha: CGFloat = isMouseInside ? 0 : 1
         if animated {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.18
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                closeButton?.animator().alphaValue = controlAlpha
+                closeButton?.animator().alphaValue = closeAlpha
+                stashButton.animator().alphaValue = controlAlpha
+                collapseButton.animator().alphaValue = collapseAlpha
                 pinButton.animator().alphaValue = pinAlpha
+                progressLabel.animator().alphaValue = progressAlpha
             }
         } else {
-            closeButton?.alphaValue = controlAlpha
+            closeButton?.alphaValue = closeAlpha
+            stashButton.alphaValue = controlAlpha
+            collapseButton.alphaValue = collapseAlpha
             pinButton.alphaValue = pinAlpha
+            progressLabel.alphaValue = progressAlpha
         }
+        closeButton?.isEnabled = !collapsed
     }
 
     /// Collapses the note to a title-bar-sized strip (or expands it back),
     /// keeping the top edge in place — the classic Stickies gesture, reached
-    /// via double-clicking the top edge or Window > Collapse Note.
+    /// via the chevron button, double-clicking the top edge, or ⇧⌘M.
     @objc func toggleCollapse(_ sender: Any?) {
         guard let window else { return }
         var frame = window.frame
@@ -273,25 +437,68 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
             frame.origin.y = frame.maxY - restoredHeight
             frame.size.height = restoredHeight
             expandedHeight = nil
+            window.makeFirstResponder(textView)
         } else {
             expandedHeight = frame.height
             frame.origin.y = frame.maxY - Self.collapsedHeight
             frame.size.height = Self.collapsedHeight
+            // The text view is about to be hidden; typing must not keep
+            // editing it invisibly.
+            window.makeFirstResponder(nil)
         }
+        // Limits first: the collapsed strip is far below the normal minimum
+        // height, and the target frame would be clamped otherwise.
+        applyCollapseConstraints()
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.18
             context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             window.animator().setFrame(frame, display: true)
         }
+        // The chevron flips direction and stays faintly visible while
+        // collapsed, so the way back is always discoverable.
+        applyStyle()
+        manager?.noteDidChange(note)
     }
 
-    // MARK: Pin button
+    /// While collapsed the window is locked to the strip height (no vertical
+    /// resizing); expanded, the normal limits apply.
+    private func applyCollapseConstraints() {
+        guard let window else { return }
+        if expandedHeight != nil {
+            window.minSize = NSSize(width: StickyNoteWindow.standardMinSize.width, height: Self.collapsedHeight)
+            window.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: Self.collapsedHeight)
+        } else {
+            window.minSize = StickyNoteWindow.standardMinSize
+            window.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        }
+    }
+
+    // MARK: Pin + stash buttons
 
     @objc func togglePin(_ sender: Any?) {
         note.isPinned.toggle()
         applyWindowLevel()
         applyStyle()
         manager?.noteDidChange(note)
+    }
+
+    /// Saves the stix and puts it away: the window closes but the note
+    /// stays on disk, reopenable from File > Saved Stixx or the Find panel.
+    @objc func stashStix(_ sender: Any?) {
+        manager?.stashNote(id: note.id)
+    }
+
+    /// Fades the window out and closes it without deleting the note.
+    func closeForStash() {
+        guard let window else { return }
+        isClosingForStash = true
+        window.ignoresMouseEvents = true
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.18
+            window.animator().alphaValue = 0
+        }, completionHandler: {
+            window.close()
+        })
     }
 
     // MARK: Context menu (color + translucency + delete)
@@ -313,7 +520,11 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         translucentItem.state = note.isTranslucent ? .on : .off
         items.append(translucentItem)
 
-        let deleteItem = NSMenuItem(title: "Delete Note", action: #selector(deleteRequested), keyEquivalent: "")
+        let stashItem = NSMenuItem(title: "Save for Later", action: #selector(stashStix(_:)), keyEquivalent: "")
+        stashItem.target = self
+        items.append(stashItem)
+
+        let deleteItem = NSMenuItem(title: "Delete Stix", action: #selector(deleteRequested), keyEquivalent: "")
         deleteItem.target = self
         items.append(.separator())
         items.append(deleteItem)
@@ -392,8 +603,8 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
     private func confirmDeletion(for window: NSWindow) -> Bool {
         guard AppPreferences.shared.confirmBeforeDelete else { return true }
         let alert = NSAlert()
-        alert.messageText = "Delete this note?"
-        alert.informativeText = "You can bring it back with File > Reopen Last Deleted Note (\u{21E7}\u{2318}T) until you quit Stixx."
+        alert.messageText = "Delete this stix?"
+        alert.informativeText = "You can bring it back with File > Reopen Last Deleted Stix (\u{21E7}\u{2318}T) until you quit Stixx."
         alert.addButton(withTitle: "Delete")
         alert.addButton(withTitle: "Cancel")
         alert.showsSuppressionButton = true
@@ -450,7 +661,7 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         case #selector(togglePin(_:)):
             menuItem.state = note.isPinned ? .on : .off
         case #selector(toggleCollapse(_:)):
-            menuItem.title = expandedHeight == nil ? "Collapse Note" : "Expand Note"
+            menuItem.title = expandedHeight == nil ? "Collapse Stix" : "Expand Stix"
         default:
             break
         }
@@ -461,8 +672,9 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
 
     func textDidChange(_ notification: Notification) {
         note.text = textView.string
-        window?.title = Self.windowTitle(for: note.text)
+        window?.title = note.displayTitle
         applyTextStyling()
+        updateChecklistProgress()
         manager?.noteDidChange(note)
     }
 
@@ -492,6 +704,7 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
     }
 
     func windowWillClose(_ notification: Notification) {
+        guard !isClosingForStash else { return }
         manager?.deleteNote(id: note.id)
     }
 }

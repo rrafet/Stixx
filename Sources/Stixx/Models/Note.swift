@@ -11,6 +11,12 @@ struct Note: Codable, Identifiable, Equatable {
     var fontSize: Double
     var isPinned: Bool
     var isTranslucent: Bool
+    /// A stashed stix is saved on disk but has no window on screen; it can be
+    /// reopened any time from the Saved Stixx menu or the Find panel.
+    var isStashed: Bool
+    /// Non-nil while the stix is collapsed to its title strip: the height to
+    /// restore on expand. Persisted so a collapsed stix stays collapsed.
+    var expandedHeight: Double?
     var x: Double
     var y: Double
     var width: Double
@@ -24,6 +30,8 @@ struct Note: Codable, Identifiable, Equatable {
         fontSize: Double = 16,
         isPinned: Bool = false,
         isTranslucent: Bool = false,
+        isStashed: Bool = false,
+        expandedHeight: Double? = nil,
         x: Double,
         y: Double,
         width: Double = 220,
@@ -36,6 +44,8 @@ struct Note: Codable, Identifiable, Equatable {
         self.fontSize = fontSize
         self.isPinned = isPinned
         self.isTranslucent = isTranslucent
+        self.isStashed = isStashed
+        self.expandedHeight = expandedHeight
         self.x = x
         self.y = y
         self.width = width
@@ -53,7 +63,7 @@ struct Note: Codable, Identifiable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, text, color, fontStyle, fontSize, isPinned, isTranslucent, x, y, width, height
+        case id, text, color, fontStyle, fontSize, isPinned, isTranslucent, isStashed, expandedHeight, x, y, width, height
     }
 
     init(from decoder: Decoder) throws {
@@ -65,9 +75,21 @@ struct Note: Codable, Identifiable, Equatable {
         fontSize = try c.decodeIfPresent(Double.self, forKey: .fontSize) ?? 16
         isPinned = try c.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         isTranslucent = try c.decodeIfPresent(Bool.self, forKey: .isTranslucent) ?? false
+        isStashed = try c.decodeIfPresent(Bool.self, forKey: .isStashed) ?? false
+        expandedHeight = try c.decodeIfPresent(Double.self, forKey: .expandedHeight)
         x = try c.decode(Double.self, forKey: .x)
         y = try c.decode(Double.self, forKey: .y)
         width = try c.decode(Double.self, forKey: .width)
         height = try c.decode(Double.self, forKey: .height)
+    }
+}
+
+extension Note {
+    /// The stix's first non-empty line, trimmed, shown as its window title
+    /// and in menus/search results. Falls back to "Stix" for an empty note.
+    var displayTitle: String {
+        let firstLine = text.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: true).first
+        let trimmed = firstLine.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""
+        return trimmed.isEmpty ? "Stix" : String(trimmed.prefix(40))
     }
 }

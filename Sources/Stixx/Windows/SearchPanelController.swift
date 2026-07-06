@@ -26,14 +26,14 @@ final class SearchPanelController: NSWindowController, NSSearchFieldDelegate, NS
             backing: .buffered,
             defer: false
         )
-        panel.title = "Find Notes"
+        panel.title = "Find Stixx"
         panel.isReleasedWhenClosed = false
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.center()
         super.init(window: panel)
 
-        searchField.placeholderString = "Search notes"
+        searchField.placeholderString = "Search stixx"
         searchField.delegate = self
         searchField.translatesAutoresizingMaskIntoConstraints = false
 
@@ -100,23 +100,20 @@ final class SearchPanelController: NSWindowController, NSSearchFieldDelegate, NS
             .filter { query.isEmpty || $0.text.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
         results = notes
             .map { note in
-                Result(
+                // A stashed stix still shows up here — selecting it reopens
+                // its window — but its row says so.
+                let snippet = Self.snippet(for: note, matching: query)
+                return Result(
                     id: note.id,
-                    title: Self.title(for: note),
-                    snippet: Self.snippet(for: note, matching: query),
+                    title: note.displayTitle,
+                    snippet: note.isStashed ? (snippet.isEmpty ? "Saved" : "Saved \u{00B7} \(snippet)") : snippet,
                     color: note.color
                 )
             }
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-        emptyLabel.stringValue = query.isEmpty ? "No notes yet" : "No matching notes"
+        emptyLabel.stringValue = query.isEmpty ? "No stixx yet" : "No matching stixx"
         emptyLabel.isHidden = !results.isEmpty
         tableView.reloadData()
-    }
-
-    private static func title(for note: Note) -> String {
-        let firstLine = note.text.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: true).first
-        let trimmed = firstLine.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""
-        return trimmed.isEmpty ? "Note" : String(trimmed.prefix(40))
     }
 
     /// The first line containing the query; without a query, the second line

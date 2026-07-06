@@ -5,6 +5,10 @@ import AppKit
 /// note is never minimized or zoomed), and even that stays hidden until
 /// the mouse is over the note.
 final class StickyNoteWindow: NSWindow {
+    /// Minimum size of an expanded note; a collapsed one shrinks below this,
+    /// so the controller swaps the limits while collapsed.
+    static let standardMinSize = NSSize(width: 120, height: 100)
+
     init(contentRect: NSRect, color: NSColor) {
         super.init(
             contentRect: contentRect,
@@ -18,7 +22,7 @@ final class StickyNoteWindow: NSWindow {
         hasShadow = true
         isMovableByWindowBackground = true
         backgroundColor = color
-        minSize = NSSize(width: 120, height: 100)
+        minSize = Self.standardMinSize
         isRestorable = false
         collectionBehavior = [.fullScreenAuxiliary]
     }

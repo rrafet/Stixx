@@ -4,13 +4,28 @@ import AppKit
 /// the standard right-click editing menu, plus lightweight auto-lists:
 /// "- " or "* " at the start of a line becomes a bullet, "[]" becomes a
 /// clickable checkbox, Return continues the list, Return on an empty item
-/// ends it, and clicking a checkbox toggles it.
+/// ends it, clicking a checkbox toggles it, and Tab / ⇧Tab indent and
+/// outdent list lines (leading tab characters carry the nesting level).
 final class StickyTextView: NSTextView {
     var extraMenuItemsProvider: (() -> [NSMenuItem])? = nil
 
     static let bullet = "\u{2022} "
     static let uncheckedBox = "\u{2610} "
     static let checkedBox = "\u{2611} "
+    private static let listMarkers = [bullet, uncheckedBox, checkedBox]
+
+    /// If the line containing `location` is a list line — leading tabs, then
+    /// a marker — returns its start, nesting depth, and marker.
+    private func listLineInfo(at location: Int) -> (lineStart: Int, tabCount: Int, marker: String)? {
+        let text = string as NSString
+        guard text.length > 0 else { return nil }
+        let lineRange = text.lineRange(for: NSRange(location: min(location, text.length), length: 0))
+        var index = lineRange.location
+        while index < NSMaxRange(lineRange), text.character(at: index) == 0x09 { index += 1 }
+        let rest = text.substring(with: NSRange(location: index, length: NSMaxRange(lineRange) - index))
+        guard let marker = Self.listMarkers.first(where: { rest.hasPrefix($0) }) else { return nil }
+        return (lineRange.location, index - lineRange.location, marker)
+    }
 
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
         if let typed = insertString as? String, typed == " " {
@@ -18,18 +33,21 @@ final class StickyTextView: NSTextView {
             let text = string as NSString
             if selection.length == 0 {
                 let lineStart = text.lineRange(for: NSRange(location: selection.location, length: 0)).location
+                // The marker may sit after leading tabs on an indented line.
+                var contentStart = lineStart
+                while contentStart < selection.location, text.character(at: contentStart) == 0x09 { contentStart += 1 }
                 // "- " or "* " at the start of a line turns into a bullet.
-                if selection.location == lineStart + 1,
-                   text.character(at: lineStart) == 0x2D || text.character(at: lineStart) == 0x2A { // "-" or "*"
+                if selection.location == contentStart + 1,
+                   text.character(at: contentStart) == 0x2D || text.character(at: contentStart) == 0x2A { // "-" or "*"
                     super.insertText(typed, replacementRange: replacementRange)
-                    convertMarker(at: lineStart, length: 2, to: Self.bullet)
+                    convertMarker(at: contentStart, length: 2, to: Self.bullet)
                     return
                 }
                 // "[] " at the start of a line turns into a checkbox.
-                if selection.location == lineStart + 2,
-                   text.character(at: lineStart) == 0x5B, text.character(at: lineStart + 1) == 0x5D { // "[]"
+                if selection.location == contentStart + 2,
+                   text.character(at: contentStart) == 0x5B, text.character(at: contentStart + 1) == 0x5D { // "[]"
                     super.insertText(typed, replacementRange: replacementRange)
-                    convertMarker(at: lineStart, length: 3, to: Self.uncheckedBox)
+                    convertMarker(at: contentStart, length: 3, to: Self.uncheckedBox)
                     return
                 }
             }
@@ -47,27 +65,77 @@ final class StickyTextView: NSTextView {
 
     override func insertNewline(_ sender: Any?) {
         let selection = selectedRange()
+        guard selection.length == 0, let info = listLineInfo(at: selection.location) else {
+            super.insertNewline(sender)
+            return
+        }
         let text = string as NSString
         let lineRange = text.lineRange(for: NSRange(location: selection.location, length: 0))
         let line = text.substring(with: lineRange).trimmingCharacters(in: .newlines)
-        let markers = [Self.bullet, Self.uncheckedBox, Self.checkedBox]
-        if let marker = markers.first(where: { line.hasPrefix($0) }) {
-            if line.dropFirst(2).trimmingCharacters(in: .whitespaces).isEmpty {
-                // Return on an empty item ends the list instead of adding another.
-                let markerRange = NSRange(location: lineRange.location, length: 2)
-                if shouldChangeText(in: markerRange, replacementString: "") {
-                    replaceCharacters(in: markerRange, with: "")
-                    didChangeText()
-                }
-                return
+        let prefixLength = info.tabCount + info.marker.count
+        if line.dropFirst(prefixLength).trimmingCharacters(in: .whitespaces).isEmpty {
+            // Return on an empty item ends the list instead of adding another.
+            let markerRange = NSRange(location: info.lineStart, length: prefixLength)
+            if shouldChangeText(in: markerRange, replacementString: "") {
+                replaceCharacters(in: markerRange, with: "")
+                didChangeText()
             }
-            super.insertNewline(sender)
-            // A checked line continues with a fresh unchecked box.
-            let continuation = marker == Self.bullet ? Self.bullet : Self.uncheckedBox
-            insertText(continuation, replacementRange: selectedRange())
             return
         }
         super.insertNewline(sender)
+        // The next item keeps the nesting level; a checked line continues
+        // with a fresh unchecked box.
+        let continuationMarker = info.marker == Self.bullet ? Self.bullet : Self.uncheckedBox
+        let continuation = String(repeating: "\t", count: info.tabCount) + continuationMarker
+        insertText(continuation, replacementRange: selectedRange())
+    }
+
+    // MARK: Indenting (Tab / ⇧Tab)
+
+    override func insertTab(_ sender: Any?) {
+        if indentListLines(by: 1) { return }
+        super.insertTab(sender)
+    }
+
+    override func insertBacktab(_ sender: Any?) {
+        if indentListLines(by: -1) { return }
+        super.insertBacktab(sender)
+    }
+
+    /// Indents (or outdents) every list line touched by the selection by one
+    /// tab. Returns false when the selection contains no list line, so Tab
+    /// keeps its usual meaning in plain text.
+    private func indentListLines(by delta: Int) -> Bool {
+        let text = string as NSString
+        guard text.length > 0 else { return false }
+        let coveredLines = text.lineRange(for: selectedRange())
+        var lineStarts: [Int] = []
+        var index = coveredLines.location
+        repeat {
+            let line = text.lineRange(for: NSRange(location: index, length: 0))
+            lineStarts.append(line.location)
+            index = NSMaxRange(line)
+        } while index < NSMaxRange(coveredLines)
+        // Bottom-up, so each edit leaves the earlier line offsets intact.
+        var foundListLine = false
+        for start in lineStarts.reversed() {
+            guard let info = listLineInfo(at: start) else { continue }
+            foundListLine = true
+            if delta > 0 {
+                let insertion = NSRange(location: info.lineStart, length: 0)
+                if shouldChangeText(in: insertion, replacementString: "\t") {
+                    replaceCharacters(in: insertion, with: "\t")
+                    didChangeText()
+                }
+            } else if info.tabCount > 0 {
+                let removal = NSRange(location: info.lineStart, length: 1)
+                if shouldChangeText(in: removal, replacementString: "") {
+                    replaceCharacters(in: removal, with: "")
+                    didChangeText()
+                }
+            }
+        }
+        return foundListLine
     }
 
     // MARK: Checkbox toggling
@@ -90,8 +158,10 @@ final class StickyTextView: NSTextView {
         guard text.length > 0, index < text.length else { return nil }
         let character = text.character(at: index)
         guard character == 0x2610 || character == 0x2611 else { return nil }
-        let lineStart = text.lineRange(for: NSRange(location: index, length: 0)).location
-        return index == lineStart ? index : nil
+        // Only the marker position counts — a ☐ typed mid-sentence is text.
+        var markerStart = text.lineRange(for: NSRange(location: index, length: 0)).location
+        while markerStart < index, text.character(at: markerStart) == 0x09 { markerStart += 1 }
+        return index == markerStart ? index : nil
     }
 
     private func toggleCheckbox(at index: Int) {
@@ -99,6 +169,15 @@ final class StickyTextView: NSTextView {
         let replacement = text.character(at: index) == 0x2610 ? "\u{2611}" : "\u{2610}"
         let range = NSRange(location: index, length: 1)
         if shouldChangeText(in: range, replacementString: replacement) {
+            // Crossfade the restyle (dim + strikethrough appearing or
+            // vanishing) instead of snapping, so checking off feels done
+            // rather than merely edited.
+            wantsLayer = true
+            let transition = CATransition()
+            transition.duration = 0.16
+            transition.type = .fade
+            transition.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            layer?.add(transition, forKey: "checkboxToggle")
             replaceCharacters(in: range, with: replacement)
             didChangeText()
         }

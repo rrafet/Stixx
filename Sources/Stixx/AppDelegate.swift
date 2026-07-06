@@ -2,10 +2,11 @@ import AppKit
 import UniformTypeIdentifiers
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSMenuDelegate {
     let noteManager = NoteManager()
     private var preferencesController: PreferencesWindowController?
     private var searchPanelController: SearchPanelController?
+    private var helpController: HelpWindowController?
     private var statusItem: NSStatusItem?
     private var newNoteHotKey: GlobalHotKey?
 
@@ -34,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     /// or starts a fresh one if every note has been deleted.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
-            if noteManager.hasNotes {
+            if noteManager.hasOpenNotes {
                 noteManager.bringAllNotesToFront()
             } else {
                 noteManager.createNewNote()
@@ -70,6 +71,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         noteManager.restoreLastDeletedNote()
     }
 
+    @objc func showHelp(_ sender: Any?) {
+        if helpController == nil {
+            helpController = HelpWindowController()
+        }
+        helpController?.show()
+    }
+
+    @objc func showWelcomeStix(_ sender: Any?) {
+        NSApp.activate(ignoringOtherApps: true)
+        noteManager.createWelcomeStix()
+    }
+
+    @objc func openSavedStix(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        noteManager.reopenStashedNote(id: id)
+    }
+
+    /// Fills a "Saved Stixx" submenu just before it opens. Both the File
+    /// menu and the status item carry one (a menu can only hang under a
+    /// single parent), so this is shared via NSMenuDelegate.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let stashed = noteManager.stashedNotes()
+        if stashed.isEmpty {
+            menu.addItem(NSMenuItem(title: "No Saved Stixx", action: nil, keyEquivalent: ""))
+            return
+        }
+        for note in stashed {
+            let item = NSMenuItem(title: note.displayTitle, action: #selector(openSavedStix(_:)), keyEquivalent: "")
+            item.target = self
+            item.image = StickyNoteWindowController.swatchImage(for: note.color.background)
+            item.representedObject = note.id
+            menu.addItem(item)
+        }
+    }
+
+    private func makeSavedStixxMenuItem() -> NSMenuItem {
+        let item = NSMenuItem(title: "Saved Stixx", action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: "Saved Stixx")
+        submenu.delegate = self
+        item.submenu = submenu
+        return item
+    }
+
     @objc func exportNotes(_ sender: Any?) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.plainText]
@@ -102,19 +148,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         item.button?.image = NSImage(systemSymbolName: "note.text", accessibilityDescription: "Stixx")
 
         let menu = NSMenu()
-        let newItem = NSMenuItem(title: "New Note", action: #selector(newNote(_:)), keyEquivalent: "n")
+        let newItem = NSMenuItem(title: "New Stix", action: #selector(newNote(_:)), keyEquivalent: "n")
         newItem.target = self
         menu.addItem(newItem)
-        let showItem = NSMenuItem(title: "Show All Notes", action: #selector(showAllNotes(_:)), keyEquivalent: "")
+        let showItem = NSMenuItem(title: "Show All Stixx", action: #selector(showAllNotes(_:)), keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
-        let findItem = NSMenuItem(title: "Find Notes…", action: #selector(showSearch(_:)), keyEquivalent: "")
+        let findItem = NSMenuItem(title: "Find Stixx…", action: #selector(showSearch(_:)), keyEquivalent: "")
         findItem.target = self
         menu.addItem(findItem)
+        menu.addItem(makeSavedStixxMenuItem())
         menu.addItem(.separator())
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showPreferences(_:)), keyEquivalent: "")
         settingsItem.target = self
         menu.addItem(settingsItem)
+        let helpItem = NSMenuItem(title: "Help…", action: #selector(showHelp(_:)), keyEquivalent: "")
+        helpItem.target = self
+        menu.addItem(helpItem)
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Stixx", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
@@ -146,21 +196,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
         let fileMenuItem = NSMenuItem()
         let fileMenu = NSMenu(title: "File")
-        let newItem = NSMenuItem(title: "New Note", action: #selector(newNote(_:)), keyEquivalent: "n")
+        let newItem = NSMenuItem(title: "New Stix", action: #selector(newNote(_:)), keyEquivalent: "n")
         newItem.target = self
         fileMenu.addItem(newItem)
-        let findItem = NSMenuItem(title: "Find Notes…", action: #selector(showSearch(_:)), keyEquivalent: "f")
+        let findItem = NSMenuItem(title: "Find Stixx…", action: #selector(showSearch(_:)), keyEquivalent: "f")
         findItem.target = self
         fileMenu.addItem(findItem)
         fileMenu.addItem(.separator())
-        // ⌘W deletes the note (after the usual confirmation) — the honest
+        // ⌘S saves the front stix and puts it away; Saved Stixx below
+        // brings any of them back.
+        fileMenu.addItem(withTitle: "Save Stix for Later", action: #selector(StickyNoteWindowController.stashStix(_:)), keyEquivalent: "s")
+        fileMenu.addItem(makeSavedStixxMenuItem())
+        fileMenu.addItem(.separator())
+        // ⌘W deletes the stix (after the usual confirmation) — the honest
         // name for what closing a sticky note actually does.
-        fileMenu.addItem(withTitle: "Delete Note", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
-        let reopenItem = NSMenuItem(title: "Reopen Last Deleted Note", action: #selector(restoreLastDeletedNote(_:)), keyEquivalent: "T")
+        fileMenu.addItem(withTitle: "Delete Stix", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        let reopenItem = NSMenuItem(title: "Reopen Last Deleted Stix", action: #selector(restoreLastDeletedNote(_:)), keyEquivalent: "T")
         reopenItem.target = self
         fileMenu.addItem(reopenItem)
         fileMenu.addItem(.separator())
-        let exportItem = NSMenuItem(title: "Export Notes…", action: #selector(exportNotes(_:)), keyEquivalent: "E")
+        let exportItem = NSMenuItem(title: "Export Stixx…", action: #selector(exportNotes(_:)), keyEquivalent: "E")
         exportItem.target = self
         fileMenu.addItem(exportItem)
         fileMenuItem.submenu = fileMenu
@@ -218,13 +273,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
         let windowMenuItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Window")
-        let collapseItem = NSMenuItem(title: "Collapse Note", action: #selector(StickyNoteWindowController.toggleCollapse(_:)), keyEquivalent: "m")
+        let collapseItem = NSMenuItem(title: "Collapse Stix", action: #selector(StickyNoteWindowController.toggleCollapse(_:)), keyEquivalent: "m")
         collapseItem.keyEquivalentModifierMask = [.command, .shift]
         windowMenu.addItem(collapseItem)
         windowMenu.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
         windowMenuItem.submenu = windowMenu
         mainMenu.addItem(windowMenuItem)
         NSApp.windowsMenu = windowMenu
+
+        let helpMenuItem = NSMenuItem()
+        let helpMenu = NSMenu(title: "Help")
+        let faqItem = NSMenuItem(title: "Stixx Help", action: #selector(showHelp(_:)), keyEquivalent: "?")
+        faqItem.target = self
+        helpMenu.addItem(faqItem)
+        let welcomeItem = NSMenuItem(title: "Show Welcome Stix", action: #selector(showWelcomeStix(_:)), keyEquivalent: "")
+        welcomeItem.target = self
+        helpMenu.addItem(welcomeItem)
+        helpMenuItem.submenu = helpMenu
+        mainMenu.addItem(helpMenuItem)
+        NSApp.helpMenu = helpMenu
 
         NSApp.mainMenu = mainMenu
     }
