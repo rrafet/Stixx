@@ -11,141 +11,152 @@
 <link rel="icon" href="media/app-icon.png">
 <style>
   :root {
-    --paper: #fffdf6;
-    --card: #ffffff;
-    --ink: #3d3113;
-    --ink-soft: #6f6340;
-    --accent: #f3c94b;
-    --accent-soft: #fdf3d0;
-    --edge: rgba(61, 49, 19, 0.12);
-    --shadow: 0 18px 50px rgba(61, 49, 19, 0.14);
+    --bg: #fafaf8;
+    --ink: #1a1916;
+    --soft: #6b675e;
+    --line: #e7e5df;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --paper: #1b1811;
-      --card: #262215;
-      --ink: #f4ecd6;
-      --ink-soft: #b7ab85;
-      --accent: #e5b93a;
-      --accent-soft: #33290f;
-      --edge: rgba(244, 236, 214, 0.14);
-      --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      --bg: #161513;
+      --ink: #e9e7e1;
+      --soft: #9b968a;
+      --line: #2c2a25;
     }
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { font-size: 16px; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-    background: var(--paper);
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
     color: var(--ink);
-    line-height: 1.6;
+    line-height: 1.65;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+  main { max-width: 680px; margin: 0 auto; padding: 0 28px; }
 
-  header { padding: 88px 0 56px; text-align: center; }
-  .icon { width: 108px; height: 108px; border-radius: 24px; box-shadow: var(--shadow); }
-  h1 { font-size: 56px; letter-spacing: -0.02em; margin-top: 28px; }
-  .tagline { font-size: 21px; color: var(--ink-soft); margin-top: 8px; }
-  .motto { font-size: 15px; font-style: italic; color: var(--ink-soft); margin-top: 6px; }
+  header { padding: 96px 0 0; }
+  .icon { width: 56px; height: 56px; border-radius: 13px; display: block; }
+  h1 { font-size: 2.25rem; font-weight: 600; letter-spacing: -0.02em; margin-top: 40px; }
+  .tagline { font-size: 1.125rem; color: var(--soft); margin-top: 4px; }
 
-  .cta { margin-top: 36px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; align-items: center; }
-  .btn {
-    display: inline-block; padding: 13px 28px; border-radius: 999px;
-    font-size: 16px; font-weight: 600; text-decoration: none; transition: transform 0.15s ease;
+  .actions { margin-top: 40px; display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap; }
+  .download {
+    display: inline-block; background: var(--ink); color: var(--bg);
+    font-size: 0.9375rem; font-weight: 500; text-decoration: none;
+    padding: 11px 22px; border-radius: 3px;
   }
-  .btn:hover { transform: translateY(-1px); }
-  .btn-primary { background: var(--ink); color: var(--paper); }
-  .btn-ghost { color: var(--ink); border: 1.5px solid var(--edge); }
-  .fine { font-size: 13px; color: var(--ink-soft); margin-top: 14px; }
+  .download:hover { opacity: 0.85; }
+  a.plain { color: var(--ink); font-size: 0.9375rem; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+  a.plain:hover { text-decoration-color: var(--ink); }
+  .meta { margin-top: 20px; font-size: 0.8125rem; color: var(--soft); }
 
-  .demo { padding: 24px 0 8px; }
-  .demo img {
-    width: 100%; border-radius: 14px; box-shadow: var(--shadow); display: block;
-  }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 72px 0; }
 
-  .shots { display: flex; gap: 4px; padding: 40px 0 8px; align-items: center; }
+  .demo img { width: 100%; display: block; border: 1px solid var(--line); border-radius: 6px; }
+  .shots { display: flex; gap: 0; margin-top: 28px; }
   .shots img { width: 25%; min-width: 0; display: block; }
 
-  section.features { padding: 64px 0 24px; }
-  h2 { font-size: 28px; letter-spacing: -0.01em; text-align: center; margin-bottom: 40px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
-  .cell {
-    background: var(--card); border: 1px solid var(--edge); border-radius: 14px; padding: 20px 22px;
+  .label {
+    font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--soft); margin-bottom: 36px;
   }
-  .cell h3 { font-size: 15px; margin-bottom: 4px; }
-  .cell p { font-size: 14px; color: var(--ink-soft); }
+  dl { display: grid; grid-template-columns: 176px 1fr; row-gap: 26px; column-gap: 32px; }
+  dt { font-size: 0.9375rem; font-weight: 550; }
+  dd { font-size: 0.9375rem; color: var(--soft); }
   kbd {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
-    background: var(--accent-soft); border: 1px solid var(--edge); border-radius: 5px; padding: 1px 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.8125rem; color: var(--ink);
   }
 
-  .gatekeeper {
-    margin: 56px 0 0; padding: 18px 22px; border-radius: 14px;
-    background: var(--accent-soft); border: 1px solid var(--edge); font-size: 14px; color: var(--ink-soft);
-  }
-  .gatekeeper strong { color: var(--ink); }
+  .note { font-size: 0.875rem; color: var(--soft); max-width: 560px; }
+  .note strong { color: var(--ink); font-weight: 550; }
 
-  footer { padding: 72px 0 56px; text-align: center; font-size: 14px; color: var(--ink-soft); }
-  footer a { color: var(--ink); text-decoration: none; font-weight: 600; }
-  footer a:hover { text-decoration: underline; }
+  footer { padding: 0 0 96px; font-size: 0.8125rem; color: var(--soft); }
+  footer a { color: var(--soft); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+  footer a:hover { color: var(--ink); }
 
-  @media (max-width: 640px) {
-    header { padding: 56px 0 40px; }
-    h1 { font-size: 42px; }
+  @media (max-width: 560px) {
+    header { padding-top: 64px; }
+    hr { margin: 56px 0; }
+    dl { grid-template-columns: 1fr; row-gap: 6px; }
+    dt { margin-top: 18px; }
     .shots { flex-wrap: wrap; }
-    .shots img { width: 48%; }
+    .shots img { width: 50%; }
   }
 </style>
 </head>
 <body>
+<main>
 
-<header class="wrap">
-  <img class="icon" src="media/app-icon.png" alt="Stixx app icon">
-  <h1>Stixx</h1>
-  <p class="tagline">Minimal, native sticky notes for macOS.</p>
-  <p class="motto">Each note is a stix; together they&rsquo;re your stixx.</p>
-  <div class="cta">
-    <a class="btn btn-primary" href="https://github.com/rrafet/Stixx/releases/latest/download/Stixx.zip">Download for macOS</a>
-    <a class="btn btn-ghost" href="https://github.com/rrafet/Stixx">View on GitHub</a>
-  </div>
-  <p class="fine">Free &amp; open source &middot; macOS 13+ &middot; Apple silicon &amp; Intel &middot; under 1&nbsp;MB</p>
-</header>
+  <header>
+    <img class="icon" src="media/app-icon.png" alt="Stixx app icon">
+    <h1>Stixx</h1>
+    <p class="tagline">Minimal, native sticky notes for macOS.</p>
+    <div class="actions">
+      <a class="download" href="https://github.com/rrafet/Stixx/releases/latest/download/Stixx.zip">Download for macOS</a>
+      <a class="plain" href="https://github.com/rrafet/Stixx">Source on GitHub</a>
+    </div>
+    <p class="meta">Free and open source. macOS 13 or later, Apple silicon and Intel. Under 1 MB.</p>
+  </header>
 
-<div class="wrap demo">
-  <img src="media/stixx-tutorial.gif" alt="Stixx in action: a translucent note over the desktop and the settings window" loading="lazy">
-</div>
+  <hr>
 
-<div class="wrap shots">
-  <img src="media/stix1-welcome.png" alt="Welcome stix with the keyboard cheat sheet" loading="lazy">
-  <img src="media/stix4-quote.png" alt="A blue stix holding a book quote" loading="lazy">
-  <img src="media/stix2-ideas.png" alt="Pinned teal stix with a bullet list" loading="lazy">
-  <img src="media/stix3-reminders.png" alt="Gray checklist stix with its progress tally" loading="lazy">
-</div>
+  <section class="demo">
+    <img src="media/stixx-tutorial.gif" alt="Stixx in action: a translucent note over the desktop and the settings window" loading="lazy">
+    <div class="shots">
+      <img src="media/stix1-welcome.png" alt="Welcome note with the keyboard cheat sheet" loading="lazy">
+      <img src="media/stix4-quote.png" alt="A blue note holding a book quote" loading="lazy">
+      <img src="media/stix2-ideas.png" alt="Pinned teal note with a bullet list" loading="lazy">
+      <img src="media/stix3-reminders.png" alt="Gray checklist note with its progress tally" loading="lazy">
+    </div>
+  </section>
 
-<section class="features wrap">
-  <h2>Everything a sticky note should do. Nothing else.</h2>
-  <div class="grid">
-    <div class="cell"><h3>Clean by design</h3><p>No visible chrome &mdash; the controls appear only when you hover a note&rsquo;s top edge.</p></div>
-    <div class="cell"><h3>Frosted glass</h3><p>A translucent stix blurs whatever is behind it; a slider in Settings tunes the tint.</p></div>
-    <div class="cell"><h3>Checklists &amp; lists</h3><p>Type <kbd>[]</kbd> for a checkbox or <kbd>-</kbd> for a bullet. Click to check off, Tab to nest.</p></div>
-    <div class="cell"><h3>Everything comes back</h3><p>Every stix returns to its exact spot on the next launch. Nothing to save, ever.</p></div>
-    <div class="cell"><h3>Quick capture</h3><p><kbd>&#8997;&#8984;N</kbd> creates a stix from inside any app, system-wide.</p></div>
-    <div class="cell"><h3>Find anything</h3><p><kbd>&#8984;F</kbd> searches every stix &mdash; including the ones you&rsquo;ve put away for later.</p></div>
-    <div class="cell"><h3>Tidy up</h3><p><kbd>&#8963;&#8984;T</kbd> slides every open stix into a neat grid, keeping sizes and order.</p></div>
-    <div class="cell"><h3>Native &amp; tiny</h3><p>Pure AppKit, zero dependencies, sandboxed. Your notes never leave your Mac.</p></div>
-  </div>
+  <hr>
 
-  <div class="gatekeeper">
-    <strong>First launch:</strong> Stixx isn&rsquo;t notarized yet, so right-click <em>Stixx.app</em> &rarr; <strong>Open</strong> &rarr; <strong>Open</strong> the first time.
-    If macOS still refuses, allow it under System Settings &rarr; Privacy &amp; Security. Only needed once.
-  </div>
-</section>
+  <section>
+    <p class="label">Features</p>
+    <dl>
+      <dt>Quiet by default</dt>
+      <dd>No visible chrome. Controls appear only when you hover a note&rsquo;s top edge.</dd>
 
-<footer class="wrap">
-  <a href="https://github.com/rrafet/Stixx">GitHub</a> &middot;
-  <a href="https://github.com/rrafet/Stixx/blob/main/LICENSE">MIT License</a> &middot;
-  Made in İstanbul
-</footer>
+      <dt>Frosted glass</dt>
+      <dd>A translucent note blurs whatever sits behind it. A slider in Settings tunes how much color stays over the glass.</dd>
 
+      <dt>Lists and checklists</dt>
+      <dd>Type <kbd>-</kbd> for a bullet or <kbd>[]</kbd> for a checkbox. Click to check off, Tab to nest.</dd>
+
+      <dt>Nothing to save</dt>
+      <dd>Every note returns to its exact place on the next launch.</dd>
+
+      <dt>Quick capture</dt>
+      <dd><kbd>&#8997;&#8984;N</kbd> creates a note from inside any app.</dd>
+
+      <dt>Search</dt>
+      <dd><kbd>&#8984;F</kbd> finds any note, including the ones put away for later.</dd>
+
+      <dt>Tidy up</dt>
+      <dd><kbd>&#8963;&#8984;T</kbd> aligns every open note into a calm grid.</dd>
+
+      <dt>Native and small</dt>
+      <dd>Pure AppKit, no dependencies, sandboxed. Notes never leave your Mac.</dd>
+    </dl>
+  </section>
+
+  <hr>
+
+  <section>
+    <p class="note"><strong>First launch.</strong> Stixx isn&rsquo;t notarized yet. Right-click Stixx.app and choose Open the first time; if macOS still refuses, allow it under System Settings&nbsp;&rarr; Privacy &amp; Security. Needed only once.</p>
+  </section>
+
+  <hr>
+
+  <footer>
+    <a href="https://github.com/rrafet/Stixx">GitHub</a> &nbsp;&middot;&nbsp;
+    <a href="https://github.com/rrafet/Stixx/blob/main/LICENSE">MIT License</a> &nbsp;&middot;&nbsp;
+    Made in İstanbul
+  </footer>
+
+</main>
 </body>
 </html>
