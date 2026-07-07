@@ -8,17 +8,19 @@ Minimal, native sticky notes for macOS. Pure AppKit, no dependencies.
 Each note is a *stix*; together they're your stixx.
 
 <p align="center">
-  <img src="docs/media/stixx-tutorial.gif" width="760" alt="Stixx in action: creating notes, checklists, frosted glass, and settings">
+  <img src="docs/media/stixx-tutorial.gif" alt="Stixx in action: a translucent stix, the settings window, and the glass tint slider">
 </p>
 
-<p align="center">
-  <img src="docs/media/stix1-welcome.png" width="270" alt="Welcome stix with the keyboard cheat sheet">
-  <img src="docs/media/stix4-quote.png" width="235" alt="A blue stix holding a book quote">
-</p>
-<p align="center">
-  <img src="docs/media/stix2-ideas.png" width="200" alt="Pinned teal stix with a bullet list">
-  <img src="docs/media/stix3-reminders.png" width="185" alt="Gray checklist stix with its 2/3 progress tally">
-</p>
+<table align="center">
+  <tr>
+    <td align="center"><img src="docs/media/stix1-welcome.png" width="400" alt="Welcome stix with the keyboard cheat sheet"></td>
+    <td align="center"><img src="docs/media/stix4-quote.png" width="400" alt="A blue stix holding a book quote"></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/stix2-ideas.png" width="400" alt="Pinned teal stix with a bullet list"></td>
+    <td align="center"><img src="docs/media/stix3-reminders.png" width="400" alt="Gray checklist stix with its 2/3 progress tally"></td>
+  </tr>
+</table>
 
 ## Download
 
