@@ -13,12 +13,10 @@ Each note is a *stix*; together they're your stixx.
 
 <table align="center">
   <tr>
-    <td align="center"><img src="docs/media/stix1-welcome.png" width="400" alt="Welcome stix with the keyboard cheat sheet"></td>
-    <td align="center"><img src="docs/media/stix4-quote.png" width="400" alt="A blue stix holding a book quote"></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="docs/media/stix2-ideas.png" width="400" alt="Pinned teal stix with a bullet list"></td>
-    <td align="center"><img src="docs/media/stix3-reminders.png" width="400" alt="Gray checklist stix with its 2/3 progress tally"></td>
+    <td align="center"><img src="docs/media/stix1-welcome.png" width="220" alt="Welcome stix with the keyboard cheat sheet"></td>
+    <td align="center"><img src="docs/media/stix4-quote.png" width="220" alt="A blue stix holding a book quote"></td>
+    <td align="center"><img src="docs/media/stix2-ideas.png" width="220" alt="Pinned teal stix with a bullet list"></td>
+    <td align="center"><img src="docs/media/stix3-reminders.png" width="220" alt="Gray checklist stix with its 2/3 progress tally"></td>
   </tr>
 </table>
 
