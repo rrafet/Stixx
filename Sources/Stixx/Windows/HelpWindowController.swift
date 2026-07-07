@@ -21,6 +21,8 @@ final class HelpWindowController: NSWindowController {
          "Right-click it and choose Translucent, or press \u{2325}\u{2318}T. The Glass tint slider in Settings (\u{2318},) sets how much of the note's color stays over the frosted glass."),
         ("How do I keep a stix above every window?",
          "Click the pin \u{2014} the middle of the three controls in its top-right corner \u{2014} or press \u{21E7}\u{2318}P."),
+        ("My stixx are scattered all over the screen.",
+         "Window > Tidy Up Stixx (\u{2303}\u{2318}T) slides them into a neat grid from the top-left, keeping each stix's size and its place in the reading order."),
         ("I deleted a stix by accident.",
          "File > Reopen Last Deleted Stix (\u{21E7}\u{2318}T) brings it back \u{2014} available until you quit Stixx."),
         ("Where are my notes stored?",

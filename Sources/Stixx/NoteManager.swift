@@ -161,6 +161,51 @@ final class NoteManager {
         controllers.values.first?.window?.makeKey()
     }
 
+    // MARK: Tidy up
+
+    /// Lines the open stixx up in a grid, one screen at a time: reading
+    /// order (top row first, left to right) is preserved, sizes are kept,
+    /// and rows wrap at the screen edge. A gentle slide, not a teleport.
+    func tidyUp() {
+        let onScreen = controllers.values.compactMap { controller -> (NSWindow, NSScreen)? in
+            guard let window = controller.window,
+                  let screen = window.screen ?? NSScreen.main else { return nil }
+            return (window, screen)
+        }
+        for (screen, group) in Dictionary(grouping: onScreen, by: { $0.1 }) {
+            tidy(group.map(\.0), within: screen.visibleFrame.insetBy(dx: 24, dy: 24))
+        }
+    }
+
+    private func tidy(_ windows: [NSWindow], within area: NSRect) {
+        // Rows are decided by where each stix sits now: anything within
+        // 40pt vertically counts as the same row, then left beats right.
+        let ordered = windows.sorted { a, b in
+            if abs(a.frame.maxY - b.frame.maxY) > 40 { return a.frame.maxY > b.frame.maxY }
+            return a.frame.minX < b.frame.minX
+        }
+        let gutter: CGFloat = 16
+        var x = area.minX
+        var rowTop = area.maxY
+        var rowHeight: CGFloat = 0
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            for window in ordered {
+                let size = window.frame.size
+                if x > area.minX, x + size.width > area.maxX {
+                    x = area.minX
+                    rowTop -= rowHeight + gutter
+                    rowHeight = 0
+                }
+                let target = NSRect(x: x, y: rowTop - size.height, width: size.width, height: size.height)
+                window.animator().setFrame(target, display: true)
+                x += size.width + gutter
+                rowHeight = max(rowHeight, size.height)
+            }
+        }
+    }
+
     /// Snapshot of every note, for the Find Notes panel.
     func allNotes() -> [Note] {
         Array(notes.values)

@@ -60,6 +60,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         noteManager.bringAllNotesToFront()
     }
 
+    @objc func tidyUpStixx(_ sender: Any?) {
+        NSApp.activate(ignoringOtherApps: true)
+        noteManager.tidyUp()
+    }
+
     @objc func showSearch(_ sender: Any?) {
         if searchPanelController == nil {
             searchPanelController = SearchPanelController(manager: noteManager)
@@ -136,6 +141,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
             return noteManager.hasRecentlyDeleted
         case #selector(exportNotes(_:)):
             return noteManager.hasNotes
+        case #selector(tidyUpStixx(_:)):
+            return noteManager.hasOpenNotes
         default:
             return true
         }
@@ -154,6 +161,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         let showItem = NSMenuItem(title: "Show All Stixx", action: #selector(showAllNotes(_:)), keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
+        let tidyItem = NSMenuItem(title: "Tidy Up Stixx", action: #selector(tidyUpStixx(_:)), keyEquivalent: "")
+        tidyItem.target = self
+        menu.addItem(tidyItem)
         let findItem = NSMenuItem(title: "Find Stixx…", action: #selector(showSearch(_:)), keyEquivalent: "")
         findItem.target = self
         menu.addItem(findItem)
@@ -277,6 +287,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         let collapseItem = NSMenuItem(title: "Collapse Stix", action: #selector(StickyNoteWindowController.toggleCollapse(_:)), keyEquivalent: "m")
         collapseItem.keyEquivalentModifierMask = [.command, .shift]
         windowMenu.addItem(collapseItem)
+        let tidyItem = NSMenuItem(title: "Tidy Up Stixx", action: #selector(tidyUpStixx(_:)), keyEquivalent: "t")
+        tidyItem.keyEquivalentModifierMask = [.command, .control]
+        tidyItem.target = self
+        windowMenu.addItem(tidyItem)
         windowMenu.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
         windowMenuItem.submenu = windowMenu
         mainMenu.addItem(windowMenuItem)
