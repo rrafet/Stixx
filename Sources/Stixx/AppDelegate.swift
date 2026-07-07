@@ -203,9 +203,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         findItem.target = self
         fileMenu.addItem(findItem)
         fileMenu.addItem(.separator())
-        // ⌘S saves the front stix and puts it away; Saved Stixx below
-        // brings any of them back.
-        fileMenu.addItem(withTitle: "Save Stix for Later", action: #selector(StickyNoteWindowController.stashStix(_:)), keyEquivalent: "s")
+        // ⌘S saves the front stix in place; putting one away lives in the
+        // right-click menu as Save for Later, and Saved Stixx below brings
+        // any of them back.
+        fileMenu.addItem(withTitle: "Save Stix", action: #selector(StickyNoteWindowController.saveStix(_:)), keyEquivalent: "s")
         fileMenu.addItem(makeSavedStixxMenuItem())
         fileMenu.addItem(.separator())
         // ⌘W deletes the stix (after the usual confirmation) — the honest

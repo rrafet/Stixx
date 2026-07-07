@@ -21,7 +21,7 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
     private let tintView: NSBox
     private let paperView: PaperGradientView
     private let pinButton: NSButton
-    private let stashButton: NSButton
+    private let saveButton: NSButton
     private let collapseButton: NSButton
     /// Faint "2/5" checklist progress, visible while the controls are not.
     private let progressLabel: NSTextField
@@ -58,7 +58,7 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         let scrollView = NSScrollView()
         let textView = StickyTextView()
         let pinButton = NSButton()
-        let stashButton = NSButton()
+        let saveButton = NSButton()
         let collapseButton = NSButton()
         let progressLabel = NSTextField(labelWithString: "")
         self.progressLabel = progressLabel
@@ -70,7 +70,7 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         self.scrollView = scrollView
         self.textView = textView
         self.pinButton = pinButton
-        self.stashButton = stashButton
+        self.saveButton = saveButton
         self.collapseButton = collapseButton
 
         let window = StickyNoteWindow(contentRect: note.frame, color: note.color.background)
@@ -150,29 +150,32 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         containerView.addSubview(collapsedTitleLabel)
         NSLayoutConstraint.activate([
             collapsedTitleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 14),
-            collapsedTitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: containerView.trailingAnchor, constant: -86),
+            // Stops short of the corner accessory, tally slot included, so a
+            // long title can't run under the checklist count.
+            collapsedTitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: containerView.trailingAnchor, constant: -114),
             collapsedTitleLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor)
         ])
         window.contentView = containerView
 
-        // Stash + pin + collapse buttons in the empty top-right corner of the
+        // Save + pin + collapse buttons in the empty top-right corner of the
         // (hidden) title bar, using the same native API window tab bars /
         // toolbars use to add accessories there — no manual overlay layout
-        // needed. All three live in one accessory view, side by side, with
-        // the checklist progress label sitting where they fade in — the two
-        // trade places on hover.
+        // needed. All three live in one accessory view, side by side. The
+        // checklist progress label has its own slot on their left: the pin
+        // and chevron stay faintly visible at rest, so the tally can never
+        // share their space without landing on one of them.
         progressLabel.frame = NSRect(x: 0, y: 4, width: 50, height: 16)
         progressLabel.alignment = .right
         progressLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .medium)
         progressLabel.isHidden = true
-        stashButton.frame = NSRect(x: 0, y: 0, width: 26, height: 24)
-        stashButton.isBordered = false
-        stashButton.imagePosition = .imageOnly
-        stashButton.setButtonType(.momentaryChange)
-        stashButton.target = self
-        stashButton.action = #selector(stashStix(_:))
-        stashButton.toolTip = "Save this stix and put it away"
-        pinButton.frame = NSRect(x: 26, y: 0, width: 26, height: 24)
+        saveButton.frame = NSRect(x: 28, y: 0, width: 26, height: 24)
+        saveButton.isBordered = false
+        saveButton.imagePosition = .imageOnly
+        saveButton.setButtonType(.momentaryChange)
+        saveButton.target = self
+        saveButton.action = #selector(saveStix(_:))
+        saveButton.toolTip = "Save this stix"
+        pinButton.frame = NSRect(x: 54, y: 0, width: 26, height: 24)
         pinButton.isBordered = false
         pinButton.imagePosition = .imageOnly
         pinButton.setButtonType(.momentaryChange)
@@ -181,17 +184,17 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         pinButton.toolTip = "Keep this stix on top"
         // The chevron sits at the far right so it stays put when the stix
         // collapses to a strip — the expand control never moves under the hand.
-        collapseButton.frame = NSRect(x: 52, y: 0, width: 26, height: 24)
+        collapseButton.frame = NSRect(x: 80, y: 0, width: 26, height: 24)
         collapseButton.isBordered = false
         collapseButton.imagePosition = .imageOnly
         collapseButton.setButtonType(.momentaryChange)
         collapseButton.target = self
         collapseButton.action = #selector(toggleCollapse(_:))
         collapseButton.toolTip = "Collapse this stix to its title"
-        let accessoryView = NSView(frame: NSRect(x: 0, y: 0, width: 78, height: 24))
+        let accessoryView = NSView(frame: NSRect(x: 0, y: 0, width: 106, height: 24))
         accessoryView.addSubview(progressLabel)
         accessoryView.addSubview(collapseButton)
-        accessoryView.addSubview(stashButton)
+        accessoryView.addSubview(saveButton)
         accessoryView.addSubview(pinButton)
         let cornerAccessory = NSTitlebarAccessoryViewController()
         cornerAccessory.view = accessoryView
@@ -214,7 +217,7 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         window.standardWindowButton(.zoomButton)?.isHidden = true
         window.standardWindowButton(.closeButton)?.alphaValue = 0
         pinButton.alphaValue = note.isPinned ? Self.restingPinAlpha : 0
-        stashButton.alphaValue = 0
+        saveButton.alphaValue = 0
         collapseButton.alphaValue = 0
         containerView.onHoverChanged = { [weak self] inside in
             guard let self else { return }
@@ -281,9 +284,9 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         pinButton.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Keep this stix on top")?
             .withSymbolConfiguration(config)
         pinButton.contentTintColor = ink.withAlphaComponent(note.isPinned ? 0.95 : 0.5)
-        stashButton.image = NSImage(systemSymbolName: "tray.and.arrow.down", accessibilityDescription: "Save this stix and put it away")?
+        saveButton.image = NSImage(systemSymbolName: "tray.and.arrow.down", accessibilityDescription: "Save this stix")?
             .withSymbolConfiguration(config)
-        stashButton.contentTintColor = ink.withAlphaComponent(0.5)
+        saveButton.contentTintColor = ink.withAlphaComponent(0.5)
         collapseButton.image = NSImage(
             systemSymbolName: collapsed ? "chevron.down" : "chevron.up",
             accessibilityDescription: collapsed ? "Expand this stix" : "Collapse this stix to its title"
@@ -393,7 +396,7 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         }
     }
 
-    /// Fades the close, collapse, stash, and pin buttons in when the mouse
+    /// Fades the close, save, pin, and collapse buttons in when the mouse
     /// is over the note and out when it leaves. A pinned note keeps its pin
     /// faintly visible so the pinned state never becomes invisible, and a
     /// collapsed one keeps its chevron for the same reason.
@@ -407,21 +410,22 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         let closeAlpha: CGFloat = collapsed ? 0 : controlAlpha
         let pinAlpha: CGFloat = isMouseInside ? 1 : (note.isPinned ? Self.restingPinAlpha : 0)
         let collapseAlpha: CGFloat = isMouseInside ? 1 : (collapsed ? Self.restingPinAlpha : 0)
-        // The tally rests where the buttons appear, so they trade places.
+        // The tally's slot ends under the save button, so it still bows out
+        // while the full control row is showing.
         let progressAlpha: CGFloat = isMouseInside ? 0 : 1
         if animated {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.18
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 closeButton?.animator().alphaValue = closeAlpha
-                stashButton.animator().alphaValue = controlAlpha
+                saveButton.animator().alphaValue = controlAlpha
                 collapseButton.animator().alphaValue = collapseAlpha
                 pinButton.animator().alphaValue = pinAlpha
                 progressLabel.animator().alphaValue = progressAlpha
             }
         } else {
             closeButton?.alphaValue = closeAlpha
-            stashButton.alphaValue = controlAlpha
+            saveButton.alphaValue = controlAlpha
             collapseButton.alphaValue = collapseAlpha
             pinButton.alphaValue = pinAlpha
             progressLabel.alphaValue = progressAlpha
@@ -475,7 +479,7 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         }
     }
 
-    // MARK: Pin + stash buttons
+    // MARK: Pin + save buttons
 
     @objc func togglePin(_ sender: Any?) {
         note.isPinned.toggle()
@@ -484,8 +488,24 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         manager?.noteDidChange(note)
     }
 
-    /// Saves the stix and puts it away: the window closes but the note
-    /// stays on disk, reopenable from File > Saved Stixx or the Find panel.
+    /// Writes the stix to disk right away and leaves it on screen. Every
+    /// edit saves itself anyway, so the real job here is the reassurance:
+    /// the tray flashes a checkmark to show the save landed.
+    @objc func saveStix(_ sender: Any?) {
+        manager?.noteDidChange(note)
+        manager?.flushPendingSave()
+        let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
+        saveButton.image = NSImage(systemSymbolName: "checkmark", accessibilityDescription: "Saved")?
+            .withSymbolConfiguration(config)
+        saveButton.contentTintColor = note.color.textColor.withAlphaComponent(0.95)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
+            self?.applyStyle()
+        }
+    }
+
+    /// Puts the stix away for the rest of the session: the window closes but
+    /// the note stays on disk, reopenable from File > Saved Stixx or the
+    /// Find panel — and it returns on its own at the next launch.
     @objc func stashStix(_ sender: Any?) {
         manager?.stashNote(id: note.id)
     }

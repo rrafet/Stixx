@@ -12,7 +12,7 @@ final class HelpWindowController: NSWindowController {
         ("How do I make a bullet list?",
          "Type \"- \" or \"* \" at the start of a line. Tab indents an item, \u{21E7}Tab brings it back out. Return on an empty item ends the list."),
         ("What does the tray button do?",
-         "The leftmost of the three top-right controls saves the stix and puts it away for the rest of the session. Bring it back from File > Saved Stixx or Find (\u{2318}F) \u{2014} and every saved stix returns to the screen on the next launch, right where it was left."),
+         "The leftmost of the three top-right controls saves the stix on the spot \u{2014} a quick checkmark confirms it \u{2014} and the note stays put. To tuck a stix away instead, right-click it and choose Save for Later; bring it back from File > Saved Stixx or Find (\u{2318}F), and every saved stix returns on the next launch anyway."),
         ("How do I collapse a stix to its title?",
          "Click the chevron at the far right of the top-right controls, double-click the stix's top edge, or press \u{21E7}\u{2318}M. The same gesture expands it again."),
         ("How do I change a stix's color or font?",

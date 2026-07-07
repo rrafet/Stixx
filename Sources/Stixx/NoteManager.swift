@@ -30,7 +30,7 @@ final class NoteManager {
         \u{2610} Click a box to check it off
         \u{2022} Tab / \u{21E7}Tab indent list items
         \u{2022} Right-click a stix for colors and options
-        \u{2022} The tray button saves a stix for later (\u{2318}S)
+        \u{2022} The tray button saves a stix right away (\u{2318}S)
         \u{2022} The chevron collapses it to just its title
         \u{2022} \u{2318}F finds anything, saved stixx included
         """
