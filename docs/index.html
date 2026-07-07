@@ -11,17 +11,17 @@
 <link rel="icon" href="media/app-icon.png">
 <style>
   :root {
-    --bg: #fafaf8;
-    --ink: #1a1916;
-    --soft: #6b675e;
-    --line: #e7e5df;
+    --bg: #f6f1e6;
+    --ink: #221c10;
+    --soft: #77704f;
+    --line: #e0d8c2;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #161513;
-      --ink: #e9e7e1;
-      --soft: #9b968a;
-      --line: #2c2a25;
+      --bg: #eae3d1;
+      --ink: #211b0f;
+      --soft: #6f6749;
+      --line: #d6cbaf;
     }
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -30,38 +30,45 @@
     font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
     background: var(--bg);
     color: var(--ink);
-    line-height: 1.65;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
   main { max-width: 680px; margin: 0 auto; padding: 0 28px; }
 
-  header { padding: 96px 0 0; }
+  header { padding: 60px 0 0; }
   .icon { width: 56px; height: 56px; border-radius: 13px; display: block; }
-  h1 { font-size: 2.25rem; font-weight: 600; letter-spacing: -0.02em; margin-top: 40px; }
-  .tagline { font-size: 1.125rem; color: var(--soft); margin-top: 4px; }
+  h1 { font-size: 2.25rem; font-weight: 600; letter-spacing: -0.02em; margin-top: 22px; }
+  .tagline { font-size: 1.125rem; color: var(--soft); margin-top: 2px; }
 
-  .actions { margin-top: 40px; display: flex; align-items: baseline; gap: 28px; flex-wrap: wrap; }
+  .actions { margin-top: 26px; display: flex; align-items: baseline; gap: 26px; flex-wrap: wrap; }
   .download {
     display: inline-block; background: var(--ink); color: var(--bg);
     font-size: 0.9375rem; font-weight: 500; text-decoration: none;
     padding: 11px 22px; border-radius: 3px;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
   }
-  .download:hover { opacity: 0.85; }
-  a.plain { color: var(--ink); font-size: 0.9375rem; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+  .download:hover { opacity: 0.88; transform: translateY(-1px); }
+  .download:active { transform: translateY(0) scale(0.985); }
+  a.plain {
+    color: var(--ink); font-size: 0.9375rem; text-decoration: underline;
+    text-underline-offset: 3px; text-decoration-color: var(--line);
+    transition: text-decoration-color 0.25s ease;
+  }
   a.plain:hover { text-decoration-color: var(--ink); }
-  .meta { margin-top: 20px; font-size: 0.8125rem; color: var(--soft); }
+  .meta { margin-top: 14px; font-size: 0.8125rem; color: var(--soft); }
 
-  hr { border: 0; border-top: 1px solid var(--line); margin: 72px 0; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 44px 0; }
 
-  .demo img { width: 100%; display: block; border: 1px solid var(--line); border-radius: 6px; }
-  .shots { display: flex; gap: 0; margin-top: 28px; }
-  .shots img { width: 25%; min-width: 0; display: block; }
+  .demo img.hero { width: 100%; display: block; border: 1px solid var(--line); border-radius: 6px; }
+  .shots { display: flex; gap: 0; margin-top: 12px; }
+  .shots img { width: 25%; min-width: 0; display: block; transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+  .shots img:hover { transform: translateY(-4px); }
 
   .label {
     font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--soft); margin-bottom: 36px;
+    text-transform: uppercase; color: var(--soft); margin-bottom: 24px;
   }
-  dl { display: grid; grid-template-columns: 176px 1fr; row-gap: 26px; column-gap: 32px; }
+  dl { display: grid; grid-template-columns: 176px 1fr; row-gap: 18px; column-gap: 32px; }
   dt { font-size: 0.9375rem; font-weight: 550; }
   dd { font-size: 0.9375rem; color: var(--soft); }
   kbd {
@@ -72,15 +79,39 @@
   .note { font-size: 0.875rem; color: var(--soft); max-width: 560px; }
   .note strong { color: var(--ink); font-weight: 550; }
 
-  footer { padding: 0 0 96px; font-size: 0.8125rem; color: var(--soft); }
-  footer a { color: var(--soft); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+  footer { padding: 0 0 60px; font-size: 0.8125rem; color: var(--soft); }
+  footer a {
+    color: var(--soft); text-decoration: underline; text-underline-offset: 3px;
+    text-decoration-color: var(--line); transition: color 0.25s ease;
+  }
   footer a:hover { color: var(--ink); }
 
+  /* Entrance: the header settles in on load, sections rise as they scroll in. */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  header > * { animation: rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  header > *:nth-child(2) { animation-delay: 0.07s; }
+  header > *:nth-child(3) { animation-delay: 0.12s; }
+  header > *:nth-child(4) { animation-delay: 0.18s; }
+  header > *:nth-child(5) { animation-delay: 0.24s; }
+  .reveal {
+    opacity: 0; transform: translateY(16px);
+    transition: opacity 0.65s ease, transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    header > * { animation: none; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .shots img, .download { transition: none; }
+  }
+
   @media (max-width: 560px) {
-    header { padding-top: 64px; }
-    hr { margin: 56px 0; }
-    dl { grid-template-columns: 1fr; row-gap: 6px; }
-    dt { margin-top: 18px; }
+    header { padding-top: 44px; }
+    hr { margin: 36px 0; }
+    dl { grid-template-columns: 1fr; row-gap: 4px; }
+    dt { margin-top: 14px; }
     .shots { flex-wrap: wrap; }
     .shots img { width: 50%; }
   }
@@ -102,8 +133,8 @@
 
   <hr>
 
-  <section class="demo">
-    <img src="media/stixx-tutorial.gif" alt="Stixx in action: a translucent note over the desktop and the settings window" loading="lazy">
+  <section class="demo reveal">
+    <img class="hero" src="media/stixx-tutorial.gif" alt="Stixx in action: a translucent note over the desktop and the settings window" loading="lazy">
     <div class="shots">
       <img src="media/stix1-welcome.png" alt="Welcome note with the keyboard cheat sheet" loading="lazy">
       <img src="media/stix4-quote.png" alt="A blue note holding a book quote" loading="lazy">
@@ -114,7 +145,7 @@
 
   <hr>
 
-  <section>
+  <section class="reveal">
     <p class="label">Features</p>
     <dl>
       <dt>Quiet by default</dt>
@@ -145,18 +176,30 @@
 
   <hr>
 
-  <section>
+  <section class="reveal">
     <p class="note"><strong>First launch.</strong> Stixx isn&rsquo;t notarized yet. Right-click Stixx.app and choose Open the first time; if macOS still refuses, allow it under System Settings&nbsp;&rarr; Privacy &amp; Security. Needed only once.</p>
   </section>
 
   <hr>
 
-  <footer>
+  <footer class="reveal">
     <a href="https://github.com/rrafet/Stixx">GitHub</a> &nbsp;&middot;&nbsp;
     <a href="https://github.com/rrafet/Stixx/blob/main/LICENSE">MIT License</a> &nbsp;&middot;&nbsp;
     Made in İstanbul
   </footer>
 
 </main>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("in");
+        observer.unobserve(entry.target);
+      }
+    }
+  }, { threshold: 0.12 });
+  document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+</script>
 </body>
 </html>
