@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="Packaging/AppIcon.png" width="128" alt="Stixx app icon">
+  <img src="docs/media/stixx-github-banner.png" alt="Stixx — minimal, native sticky notes for macOS">
 </p>
-
-<h1 align="center">Stixx</h1>
 
 Minimal, native sticky notes for macOS. Pure AppKit, no dependencies.
 Each note is a *stix*; together they're your stixx.
