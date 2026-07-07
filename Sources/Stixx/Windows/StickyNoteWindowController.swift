@@ -39,6 +39,9 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         set { note.expandedHeight = newValue.map(Double.init) }
     }
     private var lastMoveAt: Date?
+    /// Bumped on every save-button click, so an earlier click's pending
+    /// icon revert can tell it has been superseded.
+    private var saveFlashGeneration = 0
     private static let collapsedHeight: CGFloat = 44
 
     /// True right after the user dragged this note, used by NoteManager to
@@ -490,17 +493,36 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
 
     /// Writes the stix to disk right away and leaves it on screen. Every
     /// edit saves itself anyway, so the real job here is the reassurance:
-    /// the tray flashes a checkmark to show the save landed.
+    /// the tray melts into a checkmark for a moment, then eases back.
     @objc func saveStix(_ sender: Any?) {
         manager?.noteDidChange(note)
         manager?.flushPendingSave()
-        let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
-        saveButton.image = NSImage(systemSymbolName: "checkmark", accessibilityDescription: "Saved")?
-            .withSymbolConfiguration(config)
+        // A fresh click restarts the moment; the stale revert below then
+        // recognizes it lost its turn and leaves the icon alone.
+        saveFlashGeneration += 1
+        let generation = saveFlashGeneration
+        setSaveButtonSymbol("checkmark", description: "Saved")
         saveButton.contentTintColor = note.color.textColor.withAlphaComponent(0.95)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
-            self?.applyStyle()
+            guard let self, self.saveFlashGeneration == generation else { return }
+            self.setSaveButtonSymbol("tray.and.arrow.down", description: "Save this stix")
+            self.saveButton.contentTintColor = self.note.color.textColor.withAlphaComponent(0.5)
         }
+    }
+
+    /// Swaps the save button's symbol under a short crossfade, so the
+    /// checkmark never snaps in or out.
+    private func setSaveButtonSymbol(_ name: String, description: String) {
+        let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
+        guard let image = NSImage(systemSymbolName: name, accessibilityDescription: description)?
+            .withSymbolConfiguration(config) else { return }
+        saveButton.wantsLayer = true
+        let transition = CATransition()
+        transition.duration = 0.25
+        transition.type = .fade
+        transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        saveButton.layer?.add(transition, forKey: "symbolSwap")
+        saveButton.image = image
     }
 
     /// Puts the stix away for the rest of the session: the window closes but
