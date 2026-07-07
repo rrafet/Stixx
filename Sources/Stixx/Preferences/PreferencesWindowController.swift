@@ -1,17 +1,21 @@
 import AppKit
 import ServiceManagement
 
-/// A tiny, single-panel settings window. Four checkboxes, nothing else.
+/// A tiny, single-panel settings window: four checkboxes and the glass
+/// tint slider, nothing else.
 @MainActor
 final class PreferencesWindowController: NSWindowController {
     private let floatingCheckbox = NSButton(checkboxWithTitle: "New notes float on top by default", target: nil, action: nil)
     private let confirmCheckbox = NSButton(checkboxWithTitle: "Confirm before deleting a note", target: nil, action: nil)
     private let dockIconCheckbox = NSButton(checkboxWithTitle: "Hide Dock icon (menu bar only)", target: nil, action: nil)
     private let loginCheckbox = NSButton(checkboxWithTitle: "Open Stixx at login", target: nil, action: nil)
+    private let glassTintSlider = NSSlider()
+    /// Lets the slider restyle the open notes live, drag by drag.
+    private weak var noteManager: NoteManager?
 
-    convenience init() {
+    convenience init(noteManager: NoteManager?) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 250),
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 320),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -20,6 +24,7 @@ final class PreferencesWindowController: NSWindowController {
         window.isReleasedWhenClosed = false
         window.center()
         self.init(window: window)
+        self.noteManager = noteManager
 
         floatingCheckbox.target = self
         floatingCheckbox.action = #selector(toggleFloating)
@@ -35,11 +40,22 @@ final class PreferencesWindowController: NSWindowController {
         dockIconCheckbox.state = AppPreferences.shared.hideDockIcon ? .on : .off
         loginCheckbox.state = SMAppService.mainApp.status == .enabled ? .on : .off
 
+        glassTintSlider.minValue = AppPreferences.glassTintRange.lowerBound
+        glassTintSlider.maxValue = AppPreferences.glassTintRange.upperBound
+        glassTintSlider.doubleValue = AppPreferences.shared.glassTintStrength
+        glassTintSlider.isContinuous = true
+        glassTintSlider.target = self
+        glassTintSlider.action = #selector(glassTintChanged)
+        glassTintSlider.translatesAutoresizingMaskIntoConstraints = false
+        glassTintSlider.widthAnchor.constraint(equalToConstant: 200).isActive = true
+
         let stack = NSStackView(views: [
             Self.labeledSetting(floatingCheckbox, caption: "New notes stay above other windows until unpinned."),
             Self.labeledSetting(confirmCheckbox, caption: "Ask before a closed note is deleted."),
             Self.labeledSetting(dockIconCheckbox, caption: "Stixx keeps running quietly in the menu bar."),
-            Self.labeledSetting(loginCheckbox, caption: "Your notes appear as soon as you log in.")
+            Self.labeledSetting(loginCheckbox, caption: "Your notes appear as soon as you log in."),
+            Self.sliderSetting(glassTintSlider, title: "Glass tint",
+                               caption: "How much color a translucent stix keeps over the frosted glass.")
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -74,8 +90,30 @@ final class PreferencesWindowController: NSWindowController {
         return stack
     }
 
+    /// A titled slider with the same caption treatment as the checkboxes,
+    /// so the panel keeps one visual rhythm.
+    private static func sliderSetting(_ slider: NSSlider, title: String, caption: String) -> NSStackView {
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = .systemFont(ofSize: 13)
+        let captionLabel = NSTextField(labelWithString: caption)
+        captionLabel.font = .systemFont(ofSize: 11)
+        captionLabel.textColor = .secondaryLabelColor
+        captionLabel.lineBreakMode = .byWordWrapping
+
+        let stack = NSStackView(views: [titleLabel, slider, captionLabel])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 4
+        return stack
+    }
+
     @objc private func toggleFloating() {
         AppPreferences.shared.alwaysFloating = floatingCheckbox.state == .on
+    }
+
+    @objc private func glassTintChanged() {
+        AppPreferences.shared.glassTintStrength = glassTintSlider.doubleValue
+        noteManager?.refreshAllNoteStyles()
     }
 
     @objc private func toggleConfirm() {

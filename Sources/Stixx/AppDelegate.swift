@@ -50,7 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
 
     @objc func showPreferences(_ sender: Any?) {
         if preferencesController == nil {
-            preferencesController = PreferencesWindowController()
+            preferencesController = PreferencesWindowController(noteManager: noteManager)
         }
         preferencesController?.show()
     }

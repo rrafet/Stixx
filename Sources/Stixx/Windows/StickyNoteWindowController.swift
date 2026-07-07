@@ -9,9 +9,6 @@ import AppKit
 final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NSTextViewDelegate, NSMenuItemValidation {
     static let minFontSize: Double = 12
     static let maxFontSize: Double = 28
-    /// How strongly the note's color tints the frosted glass in translucent
-    /// mode. Low on purpose: the blur should read as glass, not paint.
-    private static let translucentTintAlpha: CGFloat = 0.22
     /// Resting opacity of the pin on a pinned note, so its state stays
     /// visible even when the controls have faded out.
     private static let restingPinAlpha: CGFloat = 0.55
@@ -89,6 +86,9 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         textView.isEditable = true
         textView.isSelectable = true
         textView.allowsUndo = true
+        // The Fonts panel offers families, colors, and sizes a stix can't
+        // keep; its four supported styles live in the context + Format menus.
+        textView.usesFontPanel = false
         textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: 14, height: 14)
         textView.string = note.text
@@ -155,7 +155,7 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         ])
         window.contentView = containerView
 
-        // Collapse + stash + pin buttons in the empty top-right corner of the
+        // Stash + pin + collapse buttons in the empty top-right corner of the
         // (hidden) title bar, using the same native API window tab bars /
         // toolbars use to add accessories there — no manual overlay layout
         // needed. All three live in one accessory view, side by side, with
@@ -165,27 +165,29 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         progressLabel.alignment = .right
         progressLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .medium)
         progressLabel.isHidden = true
-        collapseButton.frame = NSRect(x: 0, y: 0, width: 26, height: 24)
-        collapseButton.isBordered = false
-        collapseButton.imagePosition = .imageOnly
-        collapseButton.setButtonType(.momentaryChange)
-        collapseButton.target = self
-        collapseButton.action = #selector(toggleCollapse(_:))
-        collapseButton.toolTip = "Collapse this stix to its title"
-        stashButton.frame = NSRect(x: 26, y: 0, width: 26, height: 24)
+        stashButton.frame = NSRect(x: 0, y: 0, width: 26, height: 24)
         stashButton.isBordered = false
         stashButton.imagePosition = .imageOnly
         stashButton.setButtonType(.momentaryChange)
         stashButton.target = self
         stashButton.action = #selector(stashStix(_:))
         stashButton.toolTip = "Save this stix and put it away"
-        pinButton.frame = NSRect(x: 52, y: 0, width: 26, height: 24)
+        pinButton.frame = NSRect(x: 26, y: 0, width: 26, height: 24)
         pinButton.isBordered = false
         pinButton.imagePosition = .imageOnly
         pinButton.setButtonType(.momentaryChange)
         pinButton.target = self
         pinButton.action = #selector(togglePin(_:))
         pinButton.toolTip = "Keep this stix on top"
+        // The chevron sits at the far right so it stays put when the stix
+        // collapses to a strip — the expand control never moves under the hand.
+        collapseButton.frame = NSRect(x: 52, y: 0, width: 26, height: 24)
+        collapseButton.isBordered = false
+        collapseButton.imagePosition = .imageOnly
+        collapseButton.setButtonType(.momentaryChange)
+        collapseButton.target = self
+        collapseButton.action = #selector(toggleCollapse(_:))
+        collapseButton.toolTip = "Collapse this stix to its title"
         let accessoryView = NSView(frame: NSRect(x: 0, y: 0, width: 78, height: 24))
         accessoryView.addSubview(progressLabel)
         accessoryView.addSubview(collapseButton)
@@ -247,7 +249,7 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         // tint, with the text floating directly on the glass.
         effectView.isHidden = !translucent
         tintView.isHidden = !translucent
-        tintView.fillColor = background.withAlphaComponent(Self.translucentTintAlpha)
+        tintView.fillColor = background.withAlphaComponent(CGFloat(AppPreferences.shared.glassTintStrength))
         paperView.isHidden = translucent
         paperView.fillColor = background
         window?.isOpaque = !translucent
@@ -515,6 +517,31 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         }
         items.append(.separator())
 
+        // The font styles a stix actually supports, in place of the stock
+        // Fonts-panel submenu the text view would offer (see StickyTextView).
+        let fontItem = NSMenuItem(title: "Font", action: nil, keyEquivalent: "")
+        let fontMenu = NSMenu(title: "Font")
+        let styleActions: [(String, Selector)] = [
+            ("System", #selector(selectSystemFont(_:))),
+            ("Rounded", #selector(selectRoundedFont(_:))),
+            ("Serif", #selector(selectSerifFont(_:))),
+            ("Monospaced", #selector(selectMonospacedFont(_:)))
+        ]
+        for (title, action) in styleActions {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            fontMenu.addItem(item)
+        }
+        fontMenu.addItem(.separator())
+        let biggerItem = NSMenuItem(title: "Bigger", action: #selector(increaseFontSize(_:)), keyEquivalent: "")
+        biggerItem.target = self
+        fontMenu.addItem(biggerItem)
+        let smallerItem = NSMenuItem(title: "Smaller", action: #selector(decreaseFontSize(_:)), keyEquivalent: "")
+        smallerItem.target = self
+        fontMenu.addItem(smallerItem)
+        fontItem.submenu = fontMenu
+        items.append(fontItem)
+
         let translucentItem = NSMenuItem(title: "Translucent", action: #selector(toggleTranslucent), keyEquivalent: "")
         translucentItem.target = self
         translucentItem.state = note.isTranslucent ? .on : .off
@@ -562,6 +589,12 @@ final class StickyNoteWindowController: NSWindowController, NSWindowDelegate, NS
         note.isTranslucent.toggle()
         applyStyle()
         manager?.noteDidChange(note)
+    }
+
+    /// Re-applies the whole appearance from current state; lets the Settings
+    /// window push a new glass tint to notes that are already open.
+    func refreshStyle() {
+        applyStyle()
     }
 
     @objc private func deleteRequested() {

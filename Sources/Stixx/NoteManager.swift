@@ -35,8 +35,11 @@ final class NoteManager {
         \u{2022} \u{2318}F finds anything, saved stixx included
         """
 
-    /// Loads persisted notes and opens a window for each. On a first-ever
-    /// launch (no saved file), seeds one welcome note, matching Stickies.
+    /// Loads persisted notes and opens a window for each — including the
+    /// ones saved for later: putting a stix away lasts for the session, and
+    /// a fresh launch brings every note back where it was left. On a
+    /// first-ever launch (no saved file), seeds one welcome note, matching
+    /// Stickies.
     func loadAndRestoreWindows() {
         installSnapMonitor()
         var loaded = NotesStore.load()
@@ -51,15 +54,18 @@ final class NoteManager {
                 height: 320
             )]
         }
-        for note in loaded {
+        let hadStashed = loaded.contains(where: \.isStashed)
+        for var note in loaded {
+            note.isStashed = false
             notes[note.id] = note
-            if !note.isStashed {
-                showWindow(for: fitted(note))
-            }
+            showWindow(for: fitted(note))
         }
         if let last = loaded.last {
             lastColor = last.color
             lastOrigin = CGPoint(x: last.x, y: last.y)
+        }
+        if hadStashed {
+            persist()
         }
     }
 
@@ -137,6 +143,14 @@ final class NoteManager {
     /// Forces any pending debounced save to disk immediately. Call before quit.
     func flushPendingSave() {
         saver.flushNow()
+    }
+
+    /// Restyles every open note window, so a Settings change (the glass
+    /// tint slider) is visible the moment the slider moves.
+    func refreshAllNoteStyles() {
+        for controller in controllers.values {
+            controller.refreshStyle()
+        }
     }
 
     /// Orders every note window to the front, used by the menu bar item.

@@ -12,7 +12,9 @@ struct Note: Codable, Identifiable, Equatable {
     var isPinned: Bool
     var isTranslucent: Bool
     /// A stashed stix is saved on disk but has no window on screen; it can be
-    /// reopened any time from the Saved Stixx menu or the Find panel.
+    /// reopened any time from the Saved Stixx menu or the Find panel, and it
+    /// comes back on screen by itself at the next launch — stashing lasts
+    /// for the session, never across it.
     var isStashed: Bool
     /// Non-nil while the stix is collapsed to its title strip: the height to
     /// restore on expand. Persisted so a collapsed stix stays collapsed.

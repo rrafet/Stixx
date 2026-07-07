@@ -3,15 +3,17 @@ import AppKit
 /// The classic Stickies color palette, redrawn with flat, Tahoe-appropriate tones.
 /// Each color adapts between light and dark appearance so text stays legible.
 enum NoteColor: String, CaseIterable, Codable {
-    case yellow, blue, green, pink, purple, gray
+    case yellow, orange, green, teal, blue, purple, pink, gray
 
     var displayName: String {
         switch self {
         case .yellow: return "Yellow"
-        case .blue: return "Blue"
+        case .orange: return "Orange"
         case .green: return "Green"
-        case .pink: return "Pink"
+        case .teal: return "Teal"
+        case .blue: return "Blue"
         case .purple: return "Purple"
+        case .pink: return "Pink"
         case .gray: return "Gray"
         }
     }
@@ -27,6 +29,12 @@ enum NoteColor: String, CaseIterable, Codable {
             case .yellow:
                 return dark ? NSColor(calibratedRed: 0.58, green: 0.50, blue: 0.24, alpha: 1)
                             : NSColor(calibratedRed: 1.00, green: 0.93, blue: 0.68, alpha: 1)
+            case .orange:
+                return dark ? NSColor(calibratedRed: 0.62, green: 0.42, blue: 0.24, alpha: 1)
+                            : NSColor(calibratedRed: 1.00, green: 0.86, blue: 0.71, alpha: 1)
+            case .teal:
+                return dark ? NSColor(calibratedRed: 0.22, green: 0.46, blue: 0.45, alpha: 1)
+                            : NSColor(calibratedRed: 0.76, green: 0.94, blue: 0.92, alpha: 1)
             case .blue:
                 return dark ? NSColor(calibratedRed: 0.28, green: 0.42, blue: 0.60, alpha: 1)
                             : NSColor(calibratedRed: 0.78, green: 0.89, blue: 1.00, alpha: 1)
@@ -55,6 +63,12 @@ enum NoteColor: String, CaseIterable, Codable {
             case .yellow:
                 return dark ? NSColor(calibratedRed: 0.98, green: 0.93, blue: 0.78, alpha: 1)
                             : NSColor(calibratedRed: 0.42, green: 0.32, blue: 0.05, alpha: 1)
+            case .orange:
+                return dark ? NSColor(calibratedRed: 1.00, green: 0.91, blue: 0.81, alpha: 1)
+                            : NSColor(calibratedRed: 0.46, green: 0.25, blue: 0.04, alpha: 1)
+            case .teal:
+                return dark ? NSColor(calibratedRed: 0.81, green: 0.96, blue: 0.95, alpha: 1)
+                            : NSColor(calibratedRed: 0.03, green: 0.28, blue: 0.27, alpha: 1)
             case .blue:
                 return dark ? NSColor(calibratedRed: 0.83, green: 0.92, blue: 1.00, alpha: 1)
                             : NSColor(calibratedRed: 0.07, green: 0.20, blue: 0.42, alpha: 1)

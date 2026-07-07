@@ -194,10 +194,26 @@ final class StickyTextView: NSTextView {
         if let standardItems = standard?.items, !standardItems.isEmpty {
             combined.addItem(.separator())
             for item in Array(standardItems) {
+                // The stock Font submenu leads to the Fonts panel, whose
+                // families and colors a plain-text stix can't hold anyway;
+                // the note's own Font menu (four styles) replaces it above.
+                if Self.opensFontPanel(item) { continue }
                 standard?.removeItem(item)
                 combined.addItem(item)
             }
         }
         return combined
+    }
+
+    private static func opensFontPanel(_ item: NSMenuItem) -> Bool {
+        guard let submenu = item.submenu else { return false }
+        let fontPanelActions: [Selector] = [
+            #selector(NSFontManager.orderFrontFontPanel(_:)),
+            #selector(NSFontManager.addFontTrait(_:))
+        ]
+        return submenu.items.contains { subitem in
+            guard let action = subitem.action else { return false }
+            return fontPanelActions.contains(action)
+        }
     }
 }
